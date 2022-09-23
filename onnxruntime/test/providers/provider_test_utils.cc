@@ -985,6 +985,7 @@ bool SetEpsForAllNodes(
           provider_type == onnxruntime::kNnapiExecutionProvider ||
           provider_type == onnxruntime::kCoreMLExecutionProvider ||
           provider_type == onnxruntime::kDnnlExecutionProvider ||
+          provider_type == onnxruntime::kQnnExecutionProvider ||
           provider_type == onnxruntime::kSnpeExecutionProvider) {
         found = true;
         break;
@@ -1217,6 +1218,7 @@ void OpTester::RunWithConfig(size_t* number_of_pre_packed_weights_counter,
           kAclExecutionProvider,
           kArmNNExecutionProvider,
           kNnapiExecutionProvider,
+          kQnnExecutionProvider,
           kRocmExecutionProvider,
           kCoreMLExecutionProvider,
           kSnpeExecutionProvider,
@@ -1257,6 +1259,8 @@ void OpTester::RunWithConfig(size_t* number_of_pre_packed_weights_counter,
           execution_provider = DefaultCoreMLExecutionProvider();
         else if (provider_type == onnxruntime::kSnpeExecutionProvider)
           execution_provider = DefaultSnpeExecutionProvider();
+        else if (provider_type == onnxruntime::kQnnExecutionProvider)
+          execution_provider = DefaultQnnExecutionProvider();
         else if (provider_type == onnxruntime::kXnnpackExecutionProvider)
           execution_provider = DefaultXnnpackExecutionProvider();
         else if (provider_type == onnxruntime::kDmlExecutionProvider)

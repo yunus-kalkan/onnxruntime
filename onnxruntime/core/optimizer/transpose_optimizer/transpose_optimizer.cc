@@ -633,7 +633,7 @@ static std::string_view TransposeOutput(api::GraphRef& graph, api::NodeRef& node
   // Make transpose without input initially, then add it to avoid cyclic reference.
 
   // X -> Node -> Y,   Transpose
-  auto transpose = MakeTranspose(graph, "", perm);
+  auto transpose = MakeTranspose(graph, node.Outputs()[i], perm);
 
   // X -> Node -> *Y',   Transpose -> Y      *shape/dtype not set
   graph.MoveOutput(node, i, *transpose, 0);
