@@ -36,8 +36,7 @@ static const OpVersionsAndSelector::OpVersionsMap GetMiscOpVersionsMap() {
           {"Resize", {}},
           {"Squeeze", {}},
           {"Unsqueeze", {}},
-          {"Split", {}},
-          {"Where", {}}};
+          {"Split", {}}};
 }
 
 static const OpVersionsAndSelector::OpVersionsMap GetUnaryOpVersionsMap() {
@@ -130,6 +129,14 @@ void RegisterGemmSelector(Selectors& qdq_selectors) {
                                  std::move(selector));
 }
 
+void RegisterWhereSelector(Selectors& qdq_selectors) {
+  /* register selector for where op */
+  std::unique_ptr<NodeGroupSelector> selector = std::make_unique<WhereNodeGroupSelector>();
+  OpVersionsAndSelector::OpVersionsMap where_op_versions_map{{"Where", {}}};
+  qdq_selectors.RegisterSelector(std::move(where_op_versions_map),
+                                 std::move(selector));
+}
+
 void SelectorManager::CreateSelectors() {
   RegisterMiscSelectors(qdq_selectors_);
   RegisterUnarySelectors(qdq_selectors_);
@@ -139,6 +146,7 @@ void SelectorManager::CreateSelectors() {
   RegisterConvTransposeSelector(qdq_selectors_);
   RegisterMatMulSelector(qdq_selectors_);
   RegisterGemmSelector(qdq_selectors_);
+  RegisterWhereSelector(qdq_selectors_);
 }
 
 void SelectorManager::InitializeSelectorsMap() {
