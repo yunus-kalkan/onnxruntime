@@ -81,7 +81,8 @@ static TestTolerances LoadTestTolerances(bool enable_cuda, bool enable_openvino,
     constexpr double absolute = 1e-3;
     // when cuda is enabled, set it to a larger value for resolving random MNIST test failure
     // when openvino is enabled, set it to a larger value for resolving MNIST accuracy mismatch
-    const double relative = enable_cuda ? 0.017 : enable_openvino ? 0.009 : 1e-3;
+    const double relative = enable_cuda ? 0.017 : enable_openvino ? 0.009
+                                                                  : 1e-3;
     return TestTolerances(absolute, relative, absolute_overrides, relative_overrides);
   }
   const auto overrides_json = nlohmann::json::parse(
@@ -679,7 +680,15 @@ select from 'TF8', 'TF16', 'UINT8', 'FLOAT', 'ITENSOR'. \n)");
         ORT_TSTR("nllloss_NCd1d2_with_weight"),
         ORT_TSTR("nllloss_NCd1d2_with_weight_expanded"),
         ORT_TSTR("nllloss_NCd1d2_with_weight_reduction_sum_expanded"),
-        ORT_TSTR("nllloss_NCd1d2_with_weight_reduction_sum_ii")};
+        ORT_TSTR("nllloss_NCd1d2_with_weight_reduction_sum_ii"),
+        ORT_TSTR("sce_none_weights"),
+        ORT_TSTR("sce_none_weights_log_prob"),
+        ORT_TSTR("sce_NCd1d2d3_sum_weight_high_ii_log_prob"),
+        ORT_TSTR("sce_NCd1d2d3_sum_weight_high_ii_log_prob_expanded"),
+        ORT_TSTR("sce_NCd1d2d3_sum_weight_high_ii"),
+        ORT_TSTR("sce_NCd1d2d3_sum_weight_high_ii_expanded"),
+        ORT_TSTR("sce_none_weights_log_prob_expanded"),
+        ORT_TSTR("sce_none_weights_expanded")};
     std::unordered_set<std::basic_string<ORTCHAR_T>> all_disabled_tests(std::begin(immutable_broken_tests), std::end(immutable_broken_tests));
     if (enable_cuda) {
       all_disabled_tests.insert(std::begin(cuda_flaky_tests), std::end(cuda_flaky_tests));
@@ -1099,90 +1108,56 @@ select from 'TF8', 'TF16', 'UINT8', 'FLOAT', 'ITENSOR'. \n)");
     broken_tests.insert({"sequence_map_identity_2_sequences_expanded_cpu", "Optional type not yet supported for identity-16."});
   }
   if (enable_qnn) {
-    broken_tests.insert({"gemm_default_no_bias", ""});
-    broken_tests.insert({"maxpool_with_argmax_2d_precomputed_pads", ""});
-    broken_tests.insert({"nllloss_NCd1_ii", ""});
-    broken_tests.insert({"nllloss_NCd1_ii_expanded", ""});
-    broken_tests.insert({"nllloss_NCd1d2_no_weight_reduction_mean_ii", ""});
-    broken_tests.insert({"nllloss_NCd1d2_no_weight_reduction_mean_ii_expanded", ""});
-    broken_tests.insert({"nllloss_NCd1d2d3_sum_weight_high_ii", ""});
-    broken_tests.insert({"nllloss_NCd1d2d3_sum_weight_high_ii_expanded", ""});
-    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii", ""});
-    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii_expanded", ""});
-    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii_log_prob", ""});
-    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii_log_prob_expanded", ""});
-    broken_tests.insert({"sce_NCd1d2d3_sum_weight_high_ii", ""});
-    broken_tests.insert({"sce_NCd1d2d3_sum_weight_high_ii_expanded", ""});
-    broken_tests.insert({"sce_NCd1d2d3_sum_weight_high_ii_log_prob", ""});
-    broken_tests.insert({"sce_NCd1d2d3_sum_weight_high_ii_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean", ""});
-    broken_tests.insert({"sce_mean_3d", ""});
-    broken_tests.insert({"sce_mean_3d_expanded", ""});
-    broken_tests.insert({"sce_mean_3d_log_prob", ""});
-    broken_tests.insert({"sce_mean_3d_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_expanded", ""});
-    broken_tests.insert({"sce_mean_log_prob", ""});
-    broken_tests.insert({"sce_mean_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_3d", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_3d_expanded", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_3d_log_prob", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_3d_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_4d", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_4d_expanded", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_4d_log_prob", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_4d_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_expanded", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_log_prob", ""});
-    broken_tests.insert({"sce_mean_no_weight_ii_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_weight", ""});
-    broken_tests.insert({"sce_mean_weight_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_ii", ""});
-    broken_tests.insert({"sce_mean_weight_ii_3d", ""});
-    broken_tests.insert({"sce_mean_weight_ii_3d_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_ii_3d_log_prob", ""});
-    broken_tests.insert({"sce_mean_weight_ii_3d_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_ii_4d", ""});
-    broken_tests.insert({"sce_mean_weight_ii_4d_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_ii_4d_log_prob", ""});
-    broken_tests.insert({"sce_mean_weight_ii_4d_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_ii_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_ii_log_prob", ""});
-    broken_tests.insert({"sce_mean_weight_ii_log_prob_expanded", ""});
-    broken_tests.insert({"sce_mean_weight_log_prob", ""});
-    broken_tests.insert({"sce_mean_weight_log_prob_expanded", ""});
-    broken_tests.insert({"sce_none", ""});
-    broken_tests.insert({"sce_none_expanded", ""});
-    broken_tests.insert({"sce_none_log_prob", ""});
-    broken_tests.insert({"sce_none_log_prob_expanded", ""});
-    broken_tests.insert({"sce_none_weights", ""});
-    broken_tests.insert({"sce_none_weights_expanded", ""});
-    broken_tests.insert({"sce_none_weights_log_prob", ""});
-    broken_tests.insert({"sce_none_weights_log_prob_expanded", ""});
-    broken_tests.insert({"sce_sum", ""});
-    broken_tests.insert({"sce_sum_expanded", ""});
-    broken_tests.insert({"sce_sum_log_prob", ""});
-    broken_tests.insert({"sce_sum_log_prob_expanded", ""});
-    broken_tests.insert({"resize_downsample_scales_linear", "result diff"});
-    broken_tests.insert({"layer_normalization_2d_axis0_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_2d_axis1_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_2d_axis_negative_1_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_2d_axis_negative_2_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_3d_axis0_epsilon_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_3d_axis1_epsilon_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_3d_axis2_epsilon_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_3d_axis_negative_1_epsilon_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_3d_axis_negative_2_epsilon_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_3d_axis_negative_3_epsilon_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis0_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis1_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis2_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis3_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis_negative_1_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis_negative_2_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis_negative_3_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_4d_axis_negative_4_expanded", "result diff"});
-    broken_tests.insert({"layer_normalization_default_axis_expanded", "result diff"});
+    broken_tests.insert({"gemm_default_no_bias", "result differs"});
+    broken_tests.insert({"resize_downsample_scales_linear", "result differs"});
+    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii", "result differs"});
+    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii_expanded", "result differs"});
+    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii_log_prob", "result differs"});
+    broken_tests.insert({"sce_NCd1_mean_weight_negative_ii_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean", "result differs"});
+    broken_tests.insert({"sce_mean_3d", "result differs"});
+    broken_tests.insert({"sce_mean_3d_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_3d_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_3d_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_3d", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_3d_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_3d_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_3d_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_4d", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_4d_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_4d_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_4d_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_no_weight_ii_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight", "result differs"});
+    broken_tests.insert({"sce_mean_weight_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_3d", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_3d_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_3d_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_3d_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_4d", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_4d_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_4d_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_4d_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_weight_ii_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_mean_weight_log_prob", "result differs"});
+    broken_tests.insert({"sce_mean_weight_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_none", "result differs"});
+    broken_tests.insert({"sce_none_expanded", "result differs"});
+    broken_tests.insert({"sce_none_log_prob", "result differs"});
+    broken_tests.insert({"sce_none_log_prob_expanded", "result differs"});
+    broken_tests.insert({"sce_sum", "result differs"});
+    broken_tests.insert({"sce_sum_expanded", "result differs"});
+    broken_tests.insert({"sce_sum_log_prob", "result differs"});
+    broken_tests.insert({"sce_sum_log_prob_expanded", "result differs"});
   }
 #if defined(_WIN32) && !defined(_WIN64)
   broken_tests.insert({"vgg19", "failed: bad allocation"});
