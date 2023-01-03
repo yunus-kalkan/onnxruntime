@@ -27,6 +27,13 @@ jobs:
     inputs:
       versionSpec: '16.x'
 
+  - template: templates/get-docker-image-steps.yml
+    parameters:
+      Dockerfile: tools/ci_build/github/linux/docker/Dockerfile.manylinux2014_aten_cpu
+      Context: tools/ci_build/github/linux/docker
+      DockerBuildArgs: "--build-arg BUILD_UID=$( id -u )"
+      Repository: onnxruntimecpubuildaten
+
   - task: Cache@2
     inputs:
       key: '"ccache" | "$(Build.SourceBranch)" | "$(Build.SourceVersion)"'
@@ -41,13 +48,6 @@ jobs:
       sudo mkdir -p $(Pipeline.Workspace)/ccache
     condition: ne(variables.CACHE_RESTORED, 'true')
     displayName: Create Cache Dir
-
-  - template: templates/get-docker-image-steps.yml
-    parameters:
-      Dockerfile: tools/ci_build/github/linux/docker/Dockerfile.manylinux2014_aten_cpu
-      Context: tools/ci_build/github/linux/docker
-      DockerBuildArgs: "--build-arg BUILD_UID=$( id -u )"
-      Repository: onnxruntimecpubuildaten
 
   - task: CmdLine@2
     displayName: 'build'
@@ -76,7 +76,8 @@ jobs:
               --parallel \
               --build_wheel \
               --skip_tests \
-              --cmake_extra_defines onnxruntime_ENABLE_ATEN=ON; \
+              --cmake_extra_defines onnxruntime_ENABLE_ATEN=ON \
+              --use_cache; \
             ccache -s"
       workingDirectory: $(Build.SourcesDirectory)
 
