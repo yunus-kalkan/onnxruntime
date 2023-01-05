@@ -2,7 +2,7 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-# This file is used by Linux Multi GPU TensorRT CI Pipeline,Linux Nuphar CI Pipeline,Linux OpenVINO CI Pipeline,orttraining-linux-gpu-ci-pipeline
+# This file is used by Linux Multi GPU TensorRT CI Pipeline,Linux OpenVINO CI Pipeline,orttraining-linux-gpu-ci-pipeline
 #This file is only for Linux pipelines that build on ubuntu. All the docker images here are based on ubuntu.
 #Please don't put CentOS or manylinux2014 related stuffs here.
 set -e -o -x
@@ -96,7 +96,7 @@ elif [ $BUILD_DEVICE = "gpu" ]; then
             --docker-build-args="--build-arg BASEIMAGE=nvcr.io/nvidia/cuda:11.6.2-cudnn8-devel-${BUILD_OS} --build-arg BUILD_USER=onnxruntimedev --build-arg BUILD_UID=$(id -u) --build-arg PYTHON_VERSION=${PYTHON_VER} --build-arg INSTALL_DEPS_EXTRA_ARGS=\"${INSTALL_DEPS_EXTRA_ARGS}\" --build-arg USE_CONDA=${USE_CONDA} --network=host" \
             --dockerfile Dockerfile.ubuntu_gpu_training --context .
 elif [[ $BUILD_DEVICE = "tensorrt"* ]]; then
-        IMAGE="$BUILD_OS-cuda11.6-cudnn8.4-tensorrt8.4"
+        IMAGE="$BUILD_OS-cuda11.8-cudnn8.4-tensorrt8.5"
         DOCKER_FILE=Dockerfile.ubuntu_tensorrt
 
         $GET_DOCKER_IMAGE_CMD --repository "onnxruntime-$IMAGE" \

@@ -41,6 +41,13 @@ def get_shape_from_type_proto(type_proto):
         return None  # note no shape is different from shape without dim (scalar)
 
 
+def get_elem_type_from_type_proto(type_proto):
+    if is_sequence(type_proto):
+        return type_proto.sequence_type.elem_type.tensor_type.elem_type
+    else:
+        return type_proto.tensor_type.elem_type
+
+
 def get_shape_from_value_info(vi):
     cls_type = vi.type.WhichOneof("value")
     if cls_type is None:
@@ -186,10 +193,12 @@ class SymbolicShapeInference:
             "EmbedLayerNormalization": self._infer_EmbedLayerNormalization,
             "FastGelu": self._infer_FastGelu,
             "Gelu": self._infer_Gelu,
+            "GemmFastGelu": self._infer_GemmFastGelu,
             "LayerNormalization": self._infer_LayerNormalization,
             "LongformerAttention": self._infer_LongformerAttention,
             "PythonOp": self._infer_PythonOp,
             "SkipLayerNormalization": self._infer_SkipLayerNormalization,
+            "SkipSimplifiedLayerNormalization": self._infer_SkipLayerNormalization,
         }
         self.aten_op_dispatcher_ = {
             "embedding": self._infer_Gather,
@@ -204,6 +213,10 @@ class SymbolicShapeInference:
             "avg_pool2d": self._infer_aten_pool2d,
             "_adaptive_avg_pool2d": self._infer_aten_pool2d,
             "numpy_T": self._infer_Transpose,
+            "native_group_norm": self._infer_aten_group_norm,
+            "upsample_nearest1d": self._infer_aten_upsample_nearest,
+            "upsample_nearest2d": self._infer_aten_upsample_nearest,
+            "upsample_nearest3d": self._infer_aten_upsample_nearest,
         }
         self.run_ = True
         self.suggested_merge_ = {}
@@ -414,6 +427,7 @@ class SymbolicShapeInference:
             "EmbedLayerNormalization",
             "FastGelu",
             "Gelu",
+            "GemmFastGelu",
             "LayerNormalization",
             "LongformerAttention",
             "SkipLayerNormalization",
@@ -570,7 +584,7 @@ class SymbolicShapeInference:
         vi.CopyFrom(
             helper.make_tensor_value_info(
                 node.output[0],
-                self.known_vi_[node.input[0]].type.tensor_type.elem_type,
+                get_elem_type_from_type_proto(self.known_vi_[node.input[0]].type),
                 self._get_shape(node, 0),
             )
         )
@@ -1344,6 +1358,44 @@ class SymbolicShapeInference:
             vi = self.known_vi_[node.output[0]]
             vi.CopyFrom(helper.make_tensor_value_info(node.output[0], onnx.TensorProto.INT64, new_shape))
 
+    def _infer_aten_group_norm(self, node):
+        self._propagate_shape_and_type(node)
+        input_shape = self._get_shape(node, 0)
+        N = input_shape[0] if input_shape is not None and len(input_shape) != 0 else None
+        group = self._try_get_value(node, 6)
+        output_dtype = self.known_vi_[node.input[0]].type.tensor_type.elem_type
+        for i in [1, 2]:
+            if node.output[i]:
+                vi = self.known_vi_[node.output[i]]
+                vi.CopyFrom(
+                    helper.make_tensor_value_info(
+                        node.output[i],
+                        output_dtype,
+                        [
+                            N if N is not None else str(self._new_symbolic_dim_from_output(node, i, 0)),
+                            as_scalar(group)
+                            if group is not None
+                            else str(self._new_symbolic_dim_from_output(node, i, 1)),
+                        ],
+                    )
+                )
+
+    def _infer_aten_upsample_nearest(self, node):
+        new_shape = None
+        input_shape = self._get_shape(node, 0)
+        if input_shape is not None:
+            new_shape = input_shape[:2]
+            output_size = self._try_get_value(node, 1)
+            if output_size is not None:
+                new_shape += [dim_size.item() for dim_size in output_size]
+            else:
+                rank = len(input_shape)
+                new_shape += [str(self._new_symbolic_dim_from_output(node, 0, i)) for i in range(2, rank)]
+        if node.output[0] and new_shape is not None:
+            output_dtype = self.known_vi_[node.input[0]].type.tensor_type.elem_type
+            vi = self.known_vi_[node.output[0]]
+            vi.CopyFrom(helper.make_tensor_value_info(node.output[0], output_dtype, new_shape))
+
     def _infer_BatchNormalization(self, node):
         self._propagate_shape_and_type(node)
 
@@ -1947,6 +1999,9 @@ class SymbolicShapeInference:
     def _infer_Gelu(self, node):
         self._propagate_shape_and_type(node)
 
+    def _infer_GemmFastGelu(self, node):
+        self._compute_matmul_shape(node)
+
     def _infer_LayerNormalization(self, node):
         self._propagate_shape_and_type(node)
 
@@ -1975,6 +2030,13 @@ class SymbolicShapeInference:
 
     def _infer_SkipLayerNormalization(self, node):
         self._propagate_shape_and_type(node)
+        if len(node.output) > 3:
+            self._propagate_shape_and_type(node, 0, 3)
+
+        # If the SkipLayerNormalization node contains the optional
+        # output for inference, infer the shape and type for it too
+        if len(node.output) > 3:
+            self._propagate_shape_and_type(node, 0, 3)
 
     def _infer_PythonOp(self, node):
         output_tensor_types = get_attribute(node, "output_tensor_types")
@@ -2158,6 +2220,11 @@ class SymbolicShapeInference:
                         self._check_merged_dims(in_dims, allow_broadcast=True)
 
             for i_o in range(len(node.output)):
+                # Special case: We do not care about the training related
+                # outputs of SkipLayerNormalization
+                if node.op_type == "SkipLayerNormalization" and i_o in [1, 2]:
+                    continue
+
                 vi = self.known_vi_[node.output[i_o]]
                 out_type = vi.type
                 out_type_kind = out_type.WhichOneof("value")

@@ -4,7 +4,6 @@
 - CUDA/cuDNN: [Dockerfile](Dockerfile.cuda), [Instructions](#cuda)
 - MIGraphX: [Dockerfile](Dockerfile.migraphx), [Instructions](#migraphx)
 - ROCm: [Dockerfile](Dockerfile.rocm), [Instructions](#rocm)
-- NUPHAR: [Dockerfile](Dockerfile.nuphar), [Instructions](#nuphar)
 - OpenVINO: [Dockerfile](Dockerfile.openvino), [Instructions](#openvino)
 - TensorRT: [Dockerfile](Dockerfile.tensorrt), [Instructions](#tensorrt)
 - VitisAI: [Dockerfile](Dockerfile.vitisai)
@@ -42,7 +41,7 @@ git submodule update --init
   ```
 
 ## CUDA
-**Ubuntu 18.04, CUDA 10.2, CuDNN 8**
+**Ubuntu 20.04, CUDA 11.4, CuDNN 8**
 
 1. Update submodules
 ```
@@ -279,29 +278,8 @@ Nothing else from ONNX Runtime source tree will be copied/installed to the image
 
 Note: When running the container you built in Docker, please either use 'nvidia-docker' command instead of 'docker', or use Docker command-line options to make sure NVIDIA runtime will be used and appropiate files mounted from host. Otherwise, CUDA libraries won't be found. You can also [set NVIDIA runtime as default in Docker](https://github.com/dusty-nv/jetson-containers#docker-default-runtime).
 
-## NUPHAR
-*Public Preview*
-
-**Ubuntu 16.04, Python Bindings**
-
-1. Update submodules
-```
-git submodule update --init
-```
-
-2. Build the docker image from the Dockerfile in this repository.
-  ```
-  docker build -t onnxruntime-nuphar -f Dockerfile.nuphar .
-  ```
-
-3. Run the Docker image
-
-  ```
-  docker run -it onnxruntime-nuphar
-  ```
-
 ## MIGraphX
-**Ubuntu 18.04, rocm4.5, AMDMIGraphX v1.2**
+**Ubuntu 20.04, ROCm5.4, AMDMIGraphX v1.2**
 
 1. Build the docker image from the Dockerfile in this repository.
   ```
@@ -315,7 +293,7 @@ git submodule update --init
   ```
 
    ## ROCm
-**Ubuntu 20.04, ROCm5.2.3**
+**Ubuntu 20.04, ROCm5.4**
 
 1. Build the docker image from the Dockerfile in this repository.
   ```
@@ -325,5 +303,5 @@ git submodule update --init
 2. Run the Docker image
 
   ```
-  docker run -it --device=/dev/kfd --device=/dev/dri --group-add video --privileged onnxruntime-rocm
+  docker run -it --device=/dev/kfd --device=/dev/dri --group-add video onnxruntime-rocm
   ```
