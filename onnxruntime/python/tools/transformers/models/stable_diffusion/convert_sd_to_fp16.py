@@ -15,15 +15,16 @@
 #    python3 scripts/convert_sd_onnx_to_fp16.py -i ../stable-diffusion-v1-5 -o ../stable-diffusion-v1-5-fp16
 
 import argparse
-import sys
 import os
 import shutil
+import sys
 from pathlib import Path
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from optimizer import optimize_model  # noqa: E402
 
-#from onnxruntime.transformers.optimizer import optimize_model
+# from onnxruntime.transformers.optimizer import optimize_model
+
 
 def convert_to_fp16(source_dir: Path, target_dir: Path, overwrite: bool, use_external_data_format: bool):
     dirs_with_onnx = ["vae_encoder", "vae_decoder", "text_encoder", "safety_checker", "unet"]
