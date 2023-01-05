@@ -246,11 +246,15 @@ class FusionAttentionUnet(Fusion):
         (_, _, _, matmul_v) = v_nodes
 
         qk_nodes = self.model.match_parent_path(matmul_qkv, ["Softmax", "Mul", "MatMul"], [0, 0, 0])
-        if qk_nodes is None:
-            logger.debug("fuse_attention: failed to match qk path")
-            return
-
-        (softmax_qk, mul_qk, matmul_qk) = qk_nodes
+        if qk_nodes is not None:
+            (softmax_qk, mul_qk, matmul_qk) = qk_nodes
+        else:
+            qk_nodes = self.model.match_parent_path(matmul_qkv, ["Softmax", "Add", "Mul", "MatMul"], [0, 0, 0, 0])
+            if qk_nodes is not None:
+                (softmax_qk, add_zero, mul_qk, matmul_qk) = qk_nodes
+            else:
+                logger.debug("fuse_attention: failed to match qk path")
+                return          
 
         q_nodes = self.model.match_parent_path(matmul_qk, ["Reshape", "Transpose", "Reshape", "MatMul"], [0, 0, 0, 0])
         if q_nodes is None:
