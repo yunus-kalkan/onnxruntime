@@ -31,6 +31,10 @@ jobs:
           -p $(Build.BinariesDirectory)/protobuf_install -d $(Build.SourcesDirectory)/cmake/deps.txt
       displayName: Install protobuf
 
+    - script: |
+        ccache -s
+        ccache -z
+      displayName: Show Cache stats.
 
     - script: |
         python3 $(Build.SourcesDirectory)/tools/ci_build/build.py \
