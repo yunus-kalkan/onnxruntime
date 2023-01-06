@@ -6,12 +6,16 @@ jobs:
     MACOSX_DEPLOYMENT_TARGET: '10.14'
     CCACHE_DIR: $(Pipeline.Workspace)/ccache
     TODAY: $[format('{0:dd}{0:MM}{0:yyyy}', pipeline.startTime)]
+    mydate: $(Get-Date -Format yyyyMMddhhmmss)
   timeoutInMinutes: 150
   steps:
     - script: |
         brew install ccache
         echo "##vso[task.prependpath]/usr/local/opt/ccache/libexec"
       displayName: Install ccache and update PATH to use linked versions of gcc, cc, etc
+
+    - script: echo $(mydate)
+      displayName: Run a one-line script
 
     - task: Cache@2
       inputs:
