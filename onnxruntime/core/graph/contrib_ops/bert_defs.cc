@@ -273,7 +273,7 @@ ONNX_MS_OPERATOR_SET_SCHEMA(
         .Attr("num_heads", "Number of attention heads", AttributeProto::INT)
         .Input(0,
                "query",
-               "Query with shape (batch_size, sequence_length, hidden_size) when weights is not available.",
+               "Query with shape (batch_size, sequence_length, hidden_size)",
                "T")
         .Input(1,
                "key",

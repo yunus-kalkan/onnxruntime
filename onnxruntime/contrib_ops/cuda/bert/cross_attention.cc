@@ -30,7 +30,8 @@ REGISTER_KERNEL_TYPED(float)
 REGISTER_KERNEL_TYPED(MLFloat16)
 
 template <typename T>
-CrossAttention<T>::CrossAttention(const OpKernelInfo& info) : CudaKernel(info) {
+CrossAttention<T>::CrossAttention(const OpKernelInfo& info)
+: CudaKernel(info), fused_fp16_cross_attention_kernel_(nullptr) {
   int64_t num_heads = 0;
   ORT_ENFORCE(info.GetAttr("num_heads", &num_heads).IsOK() && num_heads > 0);
   num_heads_ = static_cast<int>(num_heads);
@@ -70,31 +71,50 @@ Status CrossAttention<T>::ComputeInternal(OpKernelContext* context) const {
   Tensor* output = context->Output(0, output_shape);
 
   MHARunner* fused_runner = nullptr;
+  const FusedMultiHeadCrossAttentionKernel* fused_cross_attention_kernel = nullptr;
+
 #ifndef ENABLE_TRAINING  // Only enable fused kernel on non-training builds
   // Check whether we can use fused kernel
   int sm = device_prop.major * 10 + device_prop.minor;
 
   bool is_mask_1d_seq_len = parameters.mask_type == AttentionMaskType::MASK_1D_KEY_SEQ_LEN;
 
-  bool use_fused_runner = !disable_fused_runner_ &&
-                          (nullptr == key_padding_mask || is_mask_1d_seq_len) &&
-                          parameters.hidden_size == parameters.v_hidden_size &&
-                          parameters.sequence_length == parameters.kv_sequence_length &&
-                          FusedMHARunnerFP16v2::is_supported(sm, parameters.head_size, sequence_length,
-                                                             enable_flash_attention_, false);
-
-  if (use_fused_runner) {
-    // Here we assume that num_heads and head_size does not change for an CrossAttention node.
-    if (nullptr == fused_fp16_runner_.get()) {
-      constexpr bool is_unidirectional = false;
-      fused_fp16_runner_.reset(new FusedMHARunnerFP16v2(
-          num_heads_, parameters.head_size, sm, is_unidirectional, enable_flash_attention_));
+  bool use_fused_cross_attention = !disable_fused_runner_ &&
+                                   (nullptr == key_padding_mask || is_mask_1d_seq_len) &&
+                                   has_fused_cross_attention_kernel(sm, parameters.head_size);
+  if (use_fused_cross_attention) {
+    if (fused_fp16_cross_attention_kernel_ == nullptr) {
+      fused_fp16_cross_attention_kernel_ = get_fused_cross_attention_kernels(sm);
     }
 
     // In case some kernel not loaded due to shared memory limit, we need to double check here.
-    const int S = fused_fp16_runner_->getSFromMaxSeqLen(sequence_length);
-    if (fused_fp16_runner_->isValid(S)) {
-      fused_runner = fused_fp16_runner_.get();
+    // The kernel has no limit on sequence length, and it just check whether the kernel has been loaded.
+    if (fused_fp16_cross_attention_kernel_->isValid(sequence_length)) {
+      fused_cross_attention_kernel = fused_fp16_cross_attention_kernel_;
+    } else {
+      use_fused_cross_attention = false;
+    }
+  } else {
+    bool use_fused_runner = !disable_fused_runner_ &&
+                            (nullptr == key_padding_mask || is_mask_1d_seq_len) &&
+                            parameters.hidden_size == parameters.v_hidden_size &&
+                            parameters.sequence_length == parameters.kv_sequence_length &&
+                            FusedMHARunnerFP16v2::is_supported(sm, parameters.head_size, sequence_length,
+                                                               enable_flash_attention_, false);
+
+    if (use_fused_runner) {
+      // Here we assume that num_heads and head_size does not change for a CrossAttention node.
+      if (nullptr == fused_fp16_runner_.get()) {
+        constexpr bool is_unidirectional = false;
+        fused_fp16_runner_.reset(new FusedMHARunnerFP16v2(
+            num_heads_, parameters.head_size, sm, is_unidirectional, enable_flash_attention_));
+      }
+
+      // In case some kernel not loaded due to shared memory limit, we need to double check here.
+      const int S = fused_fp16_runner_->getSFromMaxSeqLen(sequence_length);
+      if (fused_fp16_runner_->isValid(S)) {
+        fused_runner = fused_fp16_runner_.get();
+      }
     }
   }
 #endif
@@ -108,7 +128,8 @@ Status CrossAttention<T>::ComputeInternal(OpKernelContext* context) const {
                                                    parameters.sequence_length,
                                                    parameters.kv_sequence_length,
                                                    parameters.total_sequence_length,
-                                                   fused_runner);
+                                                   fused_runner,
+                                                   use_fused_cross_attention);
   auto work_space = GetScratchBuffer<void>(workSpaceSize, context->GetComputeStream());
 
   typedef typename ToCudaType<T>::MappedType CudaT;
@@ -128,7 +149,10 @@ Status CrossAttention<T>::ComputeInternal(OpKernelContext* context) const {
 
   cublasHandle_t cublas = GetCublasHandle(context);
   return QkvToContext<CudaT>(
-      device_prop, cublas, Stream(context), parameters, data, reinterpret_cast<void*>(fused_runner), false);
+      device_prop, cublas, Stream(context), parameters, data,
+      reinterpret_cast<void*>(fused_runner),
+      fused_cross_attention_kernel,
+      false);
 }
 
 }  // namespace cuda

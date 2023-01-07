@@ -30,14 +30,19 @@ void LaunchAddBiasTranspose(
     int total_matrix_count = -1);
 
 // Add (bias) and Transpose for separated inputs of Q, K and V, and output Trt format.
-//   output:  (batch_size, sequence_length, num_heads, num_matrices, head_size)
+// For self attention:
+//   output:  (batch_size, sequence_length, num_heads, 3, head_size)
+// For cross attention, output has Q and packed KV like the following:
+//        Q:  (batch_size, sequence_length, num_heads, head_size)
+//       KV:  (batch_size, sequence_length, num_heads, 2, head_size)
 // It assumes sequence_length == kv_sequence_length and head_size == v_head_size.
 template <typename T>
 void LaunchAddBiasTransposeTrt(
     cudaStream_t stream, const int max_threads_per_block,
     const int batch_size, const int sequence_length,
     const int num_heads, const int head_size,
-    const T* biases, const T* query, const T* key, const T* value, T* output);
+    const T* biases, const T* query, const T* key, const T* value, T* output,
+    bool is_cross_attention);
 
 }  // namespace cuda
 }  // namespace contrib

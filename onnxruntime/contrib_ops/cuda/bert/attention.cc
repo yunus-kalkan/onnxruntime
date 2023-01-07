@@ -187,7 +187,10 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
   data.present = (nullptr == present) ? nullptr : reinterpret_cast<CudaT*>(present->MutableData<T>());
 
   return QkvToContext<CudaT>(
-      device_prop, cublas, Stream(context), parameters, data, reinterpret_cast<void*>(fused_runner), past_present_share_buffer_);
+      device_prop, cublas, Stream(context), parameters, data,
+      reinterpret_cast<void*>(fused_runner),
+      nullptr, // not use fused cross attention kernel since we use fused runner for self attention.
+      past_present_share_buffer_);
 }
 
 }  // namespace cuda
