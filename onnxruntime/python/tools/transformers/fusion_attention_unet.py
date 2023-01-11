@@ -103,7 +103,7 @@ class FusionAttentionUnet(Fusion):
         assert num_heads > 0
         is_self_attention = not is_cross_attention
 
-        if not is_cross_attention:
+        if is_self_attention:
             if q_matmul.input[0] != input or k_matmul.input[0] != input or q_matmul.input[0] != input:
                 logger.debug("q_matmul.input[0] != input or k_matmul.input[0] != input or q_matmul.input[0] != input")
                 return None
@@ -164,7 +164,7 @@ class FusionAttentionUnet(Fusion):
 
             self.model.add_initializer(weight, self.this_graph_name)
         else:
-            attention_node_name = self.model.create_node_name("Attention")
+            attention_node_name = self.model.create_node_name("MultiHeadAttention")
 
         # No bias, use zeros
         qkv_bias = np.zeros([3, hidden_size], dtype=np.float32)
@@ -178,23 +178,22 @@ class FusionAttentionUnet(Fusion):
         )
         self.model.add_initializer(bias, self.this_graph_name)
 
-        attention_inputs = [
-            input,
-            attention_node_name + "_qkv_weight" if is_self_attention else "",
-            attention_node_name + "_qkv_bias",
-        ]
-        attention_inputs.append("")  # mask index
-
-        attention_inputs.append("")  # past
-
-        attention_inputs.append("")  # extra_add_qk
-
-        if is_cross_attention:
-            attention_inputs.append(k_matmul.output[0])  # key
-            attention_inputs.append(v_matmul.output[0])  # value
+        if is_self_attention:
+            attention_inputs = [
+                input,
+                attention_node_name + "_qkv_weight",
+                attention_node_name + "_qkv_bias",
+            ]
+        else:
+            attention_inputs = [
+                q_matmul.output[0],
+                k_matmul.output[0],
+                v_matmul.output[0],
+                attention_node_name + "_qkv_bias",
+            ]
 
         attention_node = helper.make_node(
-            "Attention",
+            "Attention" if is_self_attention else "MultiHeadAttention",
             inputs=attention_inputs,
             outputs=[output],
             name=attention_node_name,
@@ -254,7 +253,7 @@ class FusionAttentionUnet(Fusion):
                 (softmax_qk, add_zero, mul_qk, matmul_qk) = qk_nodes
             else:
                 logger.debug("fuse_attention: failed to match qk path")
-                return          
+                return
 
         q_nodes = self.model.match_parent_path(matmul_qk, ["Reshape", "Transpose", "Reshape", "MatMul"], [0, 0, 0, 0])
         if q_nodes is None:

@@ -17,7 +17,7 @@ logger = getLogger(__name__)
 
 class UnetOnnxModel(BertOnnxModel):
     def __init__(self, model: ModelProto, num_heads: int = 0, hidden_size: int = 0):
-        """Initialize BERT ONNX Model.
+        """Initialize UNet ONNX Model.
 
         Args:
             model (ModelProto): the ONNX model
