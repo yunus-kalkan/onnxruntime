@@ -321,10 +321,6 @@ std::unique_ptr<IAllocator> CreateCUDAPinnedAllocator(int16_t device_id, const c
 std::unique_ptr<IDataTransfer> CreateGPUDataTransfer() {
   return g_host->CreateGPUDataTransfer();
 }
-
-void MurmurHash3::x86_128(const void* key, int len, uint32_t seed, void* out) {
-  return g_host->MurmurHash3__x86_128(key, len, seed, out);
-}
 #endif
 
 #ifdef USE_MIGRAPHX
@@ -562,19 +558,16 @@ Status LongformerAttentionBase::CheckInputs(const TensorShape& input_shape,
 }
 
 Status AttentionBase::CheckInputs(const TensorShape& input_shape,
-                                  const TensorShape* weights_shape,
+                                  const TensorShape& weights_shape,
                                   const TensorShape& bias_shape,
                                   const Tensor*& mask_index,
                                   const Tensor* past,
                                   const Tensor* extra_add_qk,
-                                  const Tensor* key,
-                                  const Tensor* value,
                                   void* parameters,
                                   const int max_threads_per_block,
                                   const Tensor* past_seq_len) const {
   return g_host_cpu.AttentionBase__CheckInputs(this, input_shape, weights_shape, bias_shape,
-                                               mask_index, past, extra_add_qk,
-                                               key, value, parameters,
+                                               mask_index, past, extra_add_qk, parameters,
                                                max_threads_per_block, past_seq_len);
 }
 Tensor* AttentionBase::GetPresent(OpKernelContext* context, const Tensor* past, int batch_size, int head_size,
