@@ -317,7 +317,15 @@ Status PrepareQkv(contrib::AttentionParameters& parameters,
                              data.gemm_buffer, data.bias, qkv,
                              true, v_head_size, qkv_add_bias, 3);
     }
-  } else {  // gemm_buffer == nullptr
+  } else if (data.value == nullptr) {   // gemm_buffer == nullptr and packed kv
+    assert(data.bias == nullptr);  // bias is not supported for packed KV
+    DUMP_ATTENTION_D("packed_kv", data.key, batch_size * kv_sequence_length, num_heads, 2, qk_head_size);
+    if (data.fused_cross_attention_kernel == nullptr) {
+      // TODO: unpack and fall back to normal case.
+      return ORT_MAKE_STATUS(ONNXRUNTIME, NOT_IMPLEMENTED, "Packed KV format is only supported for GPU with SM >= 75.");
+    }
+    qkv_format = AttentionQkvFormat::Q_KV_BSNH_BSN2H;
+  } else {  // gemm_buffer == nullptr and not packed kv
     assert(data.query != nullptr && data.key != nullptr && data.value != nullptr && data.bias != nullptr);
 
     DUMP_ATTENTION_D("query", data.query, batch_size * sequence_length, num_heads, qk_head_size);
@@ -514,18 +522,26 @@ Status QkvToContext(
     FusedMultiHeadCrossAttentionKernel const* cross_attention_kernel =
         reinterpret_cast<FusedMultiHeadCrossAttentionKernel const*>(data.fused_cross_attention_kernel);
 
+    // When there is no bias, we can directly use q and packed kv from inputs. TODO: not need qkv in workspace.
+    void const* query = q;
+    void const* packed_kv = k;
+    if (data.value == nullptr && data.bias == nullptr) {
+      query = data.query;
+      packed_kv = data.key;
+    }
+
     run_fused_cross_attention(
-        q,                          // Q
-        k,                          // packed KV
-        q_sequence_offset,          // cumulated sequence length of Q
-        kv_sequence_offset,         // cumulated sequence length of KV
-        data.output,                // output
-        cross_attention_kernel,     // kernels
-        batch_size,                 // batch size
-        num_heads,                  // number of heads
-        qk_head_size,               // head size of Q/K/V
-        sequence_length,            // sequence length of Q
-        kv_sequence_length,         // sequence length of KV
+        query,                   // Q
+        packed_kv,               // packed KV
+        q_sequence_offset,       // cumulated sequence length of Q
+        kv_sequence_offset,      // cumulated sequence length of KV
+        data.output,             // output
+        cross_attention_kernel,  // kernels
+        batch_size,              // batch size
+        num_heads,               // number of heads
+        qk_head_size,            // head size of Q/K/V
+        sequence_length,         // sequence length of Q
+        kv_sequence_length,      // sequence length of KV
         stream);
 
     DUMP_ATTENTION("trt cross output", data.output, batch_size * sequence_length, num_heads, v_head_size);

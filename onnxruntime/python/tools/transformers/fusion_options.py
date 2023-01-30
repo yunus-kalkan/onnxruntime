@@ -36,9 +36,12 @@ class FusionOptions:
 
         self.enable_shape_inference = True
         self.enable_gemm_fast_gelu = False
+        self.attention_mask_format = AttentionMaskFormat.AttentionMask
+
+        # options for stable diffusion
         self.enable_group_norm = model_type == "unet"
         self.enable_bias_splitgelu = model_type == "unet"
-        self.attention_mask_format = AttentionMaskFormat.AttentionMask
+        self.enable_packed_kv = model_type == "unet"
 
     def use_raw_attention_mask(self, use_raw_mask=True):
         if use_raw_mask:
@@ -78,8 +81,10 @@ class FusionOptions:
             options.use_raw_attention_mask(False)
         if args.no_attention_mask:
             options.disable_attention_mask()
-        if args.enable_group_norm:
-            options.enable_group_norm = True
+        if args.disable_group_norm:
+            options.enable_group_norm = False
+        if args.disable_packed_kv:
+            options.enable_packed_kv = False
         return options
 
     @staticmethod
@@ -191,9 +196,17 @@ class FusionOptions:
         parser.set_defaults(use_multi_head_attention=False)
 
         parser.add_argument(
-            "--enable_group_norm",
+            "--disable_group_norm",
             required=False,
             action="store_true",
-            help="fuse GroupNorm. Only works for model_type=unet",
+            help="not fuse GroupNorm. Only works for model_type=unet",
         )
-        parser.set_defaults(enable_group_norm=False)
+        parser.set_defaults(disable_group_norm=False)
+
+        parser.add_argument(
+            "--disable_packed_kv",
+            required=False,
+            action="store_true",
+            help="not use packed kv in cross attention. Only works for model_type=unet",
+        )
+        parser.set_defaults(disable_packed_kv=False)

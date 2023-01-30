@@ -287,16 +287,18 @@ ONNX_MS_OPERATOR_SET_SCHEMA(
                "T")
         .Input(1,
                "key",
-               "Key with shape (batch_size, kv_sequence_length, hidden_size)",
+               "Key with shape (batch_size, kv_sequence_length, hidden_size), or packed KV with shape (batch_size, kv_sequence_length, num_heads, 2, head_size)",
                "T")
         .Input(2,
                "value",
                "Value with shape (batch_size, kv_sequence_length, v_hidden_size)",
-               "T")
+               "T",
+               OpSchema::Optional)
         .Input(3,
                "bias",
                "Bias tensor with shape (hidden_size + hidden_size + v_hidden_size) from input projection",
-               "T")
+               "T",
+               OpSchema::Optional)
         .Input(4,
                "key_padding_mask",
                "Key padding mask with shape (batch_size) or (batch_size, kv_sequence_length)",
