@@ -4,6 +4,7 @@
 #include "core/providers/shared_library/provider_api.h"
 #include "core/providers/cuda/nn/layer_norm.h"
 #include "core/providers/cuda/nn/layer_norm_impl.h"
+#include "core/providers/cuda/nn/trt_layer_norm_impl.h"
 #include "core/providers/cuda/cuda_common.h"
 
 namespace onnxruntime {
@@ -27,6 +28,23 @@ LayerNorm<T, U, V, simplified>::LayerNorm(const OpKernelInfo& op_kernel_info) : 
   float tmp_epsilon;
   ORT_ENFORCE(op_kernel_info.GetAttr<float>("epsilon", &tmp_epsilon).IsOK());
   epsilon_ = tmp_epsilon;
+}
+
+template <typename T, typename U, typename V>
+bool TrtLayerNorm(cudaStream_t, V*, const T*, const V*, const V*, int, int, double) {
+  return false;
+}
+
+template <>
+bool TrtLayerNorm<float, float, float>(cudaStream_t stream, float* output, const float* input, const float* gamma, const float* beta, int n1, int n2, double epsilon) {
+  computeLayerNorm<float>(n1, n2, input, gamma, beta, output, static_cast<float>(epsilon), stream);
+  return true;
+}
+
+template <>
+bool TrtLayerNorm<half, half, half>(cudaStream_t stream, half* output, const half* input, const half* gamma, const half* beta, int n1, int n2, double epsilon) {
+  computeLayerNorm<half>(n1, n2, input, gamma, beta, output, static_cast<float>(epsilon), stream);
+  return true;
 }
 
 template <typename T, typename U, typename V, bool simplified>
@@ -91,6 +109,13 @@ Status LayerNorm<T, U, V, simplified>::ComputeInternal(OpKernelContext* ctx) con
 
   if (x_shape.Size() == 0) {
     return Status::OK();
+  }
+
+  // For stable diffusion inference.
+  if (!simplified && mean_data == nullptr && inv_var_data == nullptr) {
+    if (TrtLayerNorm<CudaT, CudaU, CudaV>(Stream(ctx), Y_data, X_data, scale_data, bias_data, n1, n2, epsilon_)) {
+      return Status::OK();
+    }
   }
 
   HostApplyLayerNorm<CudaT, CudaU, CudaV, simplified>(GetDeviceProp(), Stream(ctx), Y_data, mean_data, inv_var_data,
