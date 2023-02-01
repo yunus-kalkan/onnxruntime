@@ -45,7 +45,7 @@ stages:
         ORT_EP_NAME: CPU
         GenerateDocumentation: false
         WITH_CACHE: true
-        MachinePool: 'Win-CPU-2019'
+        MachinePool: 'Win-CPU-2019-beta'
 
 - stage: x64_release_dnnl
   dependsOn: []
@@ -107,7 +107,7 @@ stages:
         ORT_EP_NAME: CPU
         GenerateDocumentation: false
         WITH_CACHE: true
-        MachinePool: 'Win-CPU-2019'
+        MachinePool: 'Win-CPU-2019-beta'
 
 - stage: x86_release
   dependsOn: []
@@ -127,7 +127,7 @@ stages:
         ORT_EP_NAME: CPU
         GenerateDocumentation: false
         WITH_CACHE: true
-        MachinePool: 'Win-CPU-2019'
+        MachinePool: 'Win-CPU-2019-beta'
 
 - stage: training_x64_debug
   dependsOn: []
