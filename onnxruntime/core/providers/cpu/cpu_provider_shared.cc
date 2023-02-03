@@ -51,6 +51,7 @@
 #include "orttraining/training_ops/cpu/controlflow/record.h"
 #include "orttraining/training_ops/cpu/controlflow/wait.h"
 #include "orttraining/training_ops/cpu/controlflow/yield.h"
+#include "orttraining/training_ops/cpu/triton/triton_op.h"
 #endif
 
 #include "cpu_provider_shared.h"
@@ -281,6 +282,7 @@ struct ProviderHostCPUImpl : ProviderHostCPU {
   void contrib__record_event_in_tensor(const Tensor& event_id_tensor) override { return contrib::record_event_in_tensor(event_id_tensor); }
   void contrib__wait_event_in_tensor(const Tensor& event_id_tensor) override { return contrib::wait_event_in_tensor(event_id_tensor); }
   Status contrib__YieldOp__Compute(const contrib::YieldOp* p, OpKernelContext* context) override { return p->YieldOp::Compute(context); }
+  Status contrib__TritonOp__Compute(const contrib::TritonOp* p, OpKernelContext* context) override { return p->TritonOp::Compute(context); }
 
   // From aten_op.h (direct)
   bool contrib__IsATenOperatorExecutorInitialized() override {

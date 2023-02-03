@@ -47,6 +47,7 @@
 
 #ifdef ENABLE_TRAINING
 #include "orttraining/training_ops/cpu/controlflow/yield.h"
+#include "orttraining/training_ops/cpu/triton/triton_op.h"
 
 #ifdef ENABLE_TRAINING_TORCH_INTEROP
 #include "orttraining/training_ops/cpu/torch/torch_custom_function_kernel_base.h"
@@ -653,6 +654,7 @@ Status SGDOptimizerV2Base::PrepareForCompute(OpKernelContext* ctx, SGDOptimizerV
 #ifdef ENABLE_TRAINING
 namespace contrib {
 Status YieldOp::Compute(OpKernelContext* context) const { return g_host_cpu.contrib__YieldOp__Compute(this, context); }
+Status TritonOp::Compute(OpKernelContext* context) const { return g_host_cpu.contrib__TritonOp__Compute(this, context); }
 }  // namespace contrib
 
 #ifdef ENABLE_TRAINING_TORCH_INTEROP

@@ -200,6 +200,7 @@ struct ProviderHostCPU {
   virtual void contrib__record_event_in_tensor(const Tensor& event_id_tensor) = 0;
   virtual void contrib__wait_event_in_tensor(const Tensor& event_id_tensor) = 0;
   virtual Status contrib__YieldOp__Compute(const contrib::YieldOp* p, OpKernelContext* context) = 0;
+  virtual Status contrib__TritonOp__Compute(const contrib::TritonOp* p, OpKernelContext* context) = 0;
 
   // From aten_op.h
   virtual bool contrib__IsATenOperatorExecutorInitialized() = 0;

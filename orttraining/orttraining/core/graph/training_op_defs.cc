@@ -4013,6 +4013,20 @@ Return true if all elements are true and false otherwise.
         }
       });
 
+  ONNX_CONTRIB_OPERATOR_SCHEMA(TritonOp)
+      .SetDomain(kMSDomain)
+      .SinceVersion(1)
+      .SetDoc("Triton Op.")
+      .Input(0, "inputs", "Input tensors.", "T", OpSchema::Variadic,
+             /*is_homogeneous*/ false,
+             /*min_arity*/ 0)
+      .Output(0, "outputs", "Output tensors.", "T", OpSchema::Variadic,
+              /*is_homogeneous*/ false,
+              /*min_arity*/ 1)
+      .Attr("func_name", "The function name that will call triton kernel.", AttributeProto::STRING)
+      .TypeConstraint("T", OpSchema::all_tensor_types_with_bfloat(),
+                      "Allow inputs and outputs to be any kind of tensor.");
+
   ONNX_CONTRIB_OPERATOR_SCHEMA(SoftmaxCrossEntropyLossInternal)
       .SetDomain(kMSDomain)
       .SinceVersion(1)
