@@ -239,8 +239,13 @@ class TrainingManager(GraphExecutionManager):
                     self._device = device
 
             # Load Triton if it's CUDA.
-            if self._device.type == "cuda" and not self.is_rocm_pytorch:
-                import onnxruntime.training.ortmodule.triton
+            try:
+                import triton
+            except ImportError as e:
+                pass
+            else:
+                if self._device.type == "cuda" and not self.is_rocm_pytorch:
+                    import onnxruntime.training.ortmodule.triton
 
             # Build the gradient graph
             if build_gradient_graph:

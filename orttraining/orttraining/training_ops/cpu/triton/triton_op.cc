@@ -5,9 +5,15 @@
 
 #include "core/framework/op_kernel_context_internal.h"
 #include "orttraining/core/framework/torch/dlpack_python.h"
+#include "orttraining/core/framework/torch/torch_proxy.h"
 
 namespace onnxruntime {
 namespace contrib {
+
+using PythonObjectPtr = language_interop_ops::torch::PythonObjectPtr;
+constexpr auto PythonObjectDeleter = language_interop_ops::torch::PythonObjectDeleter;
+constexpr auto ToDlpack = training::framework::torch::ToDlpack;
+constexpr auto FromDlpack = training::framework::torch::FromDlpack;
 
 ONNX_OPERATOR_KERNEL_EX(TritonOp, kMSDomain, 1, kCpuExecutionProvider,
                         (*KernelDefBuilder::Create()).TypeConstraint("T", DataTypeImpl::AllFixedSizeTensorTypes()),
@@ -19,40 +25,32 @@ Status TritonOp::Compute(OpKernelContext* context) const {
   size_t output_size = static_cast<size_t>(p_ctx_internal->OutputCount());
 
   // Support only device tensor for now.
-  // TODO: refactor to avoid mem leak.
-  PyObject* p_module_name = PyUnicode_FromString("onnxruntime.training.ortmodule.triton");
-  ORT_ENFORCE(p_module_name, "PyUnicode_FromString failed with module name.");
-  PyObject* p_module = PyImport_Import(p_module_name);
-  ORT_ENFORCE(p_module, "ORTModule Triton module is failed to import.");
-  PyObject* p_func = PyObject_GetAttrString(p_module, func_name_.c_str());
-  ORT_ENFORCE(p_func, "Function ", func_name_, " is not found in ORTModule Triton module.");
+  PythonObjectPtr triton_module_name(PyUnicode_FromString("onnxruntime.training.ortmodule.triton"),
+                                     PythonObjectDeleter);
+  PythonObjectPtr triton_module(PyImport_Import(triton_module_name.get()), PythonObjectDeleter);
+  ORT_ENFORCE(triton_module, "ORTModule Triton module is failed to import.");
+  PythonObjectPtr op_func(PyObject_GetAttrString(triton_module.get(), func_name_.c_str()), PythonObjectDeleter);
+  ORT_ENFORCE(op_func, "Function ", func_name_, " is not found in ORTModule Triton module.");
 
-  PyObject* p_args = PyTuple_New(input_size);
-  ORT_ENFORCE(p_args, "Failed to create input tuple with size ", input_size, ".");
+  PythonObjectPtr args(PyTuple_New(input_size), PythonObjectDeleter);
+  ORT_ENFORCE(args, "Failed to create input tuple with size ", input_size, ".");
   for (size_t i = 0; i < input_size; ++i) {
-    PyObject* p_value = training::framework::torch::ToDlpack(*p_ctx_internal->GetInputMLValue(i));
+    PyObject* p_value = ToDlpack(*p_ctx_internal->GetInputMLValue(i));
     // p_value reference stolen here.
-    PyTuple_SetItem(p_args, i, p_value);
+    PyTuple_SetItem(args.get(), i, p_value);
   }
 
   // TODO: bool tensor not supported as output for now.
-  PyObject* p_ret = PyObject_CallObject(p_func, p_args);
-  if (PyTuple_Check(p_ret)) {
-    ORT_ENFORCE(static_cast<size_t>(PyTuple_Size(p_ret)) == output_size, "Output size mismatch.");
+  PythonObjectPtr ret(PyObject_CallObject(op_func.get(), args.get()), PythonObjectDeleter);
+  if (PyTuple_Check(ret.get())) {
+    ORT_ENFORCE(static_cast<size_t>(PyTuple_Size(ret.get())) == output_size, "Output size mismatch.");
     for (size_t i = 0; i < output_size; ++i) {
-      ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(
-          i, training::framework::torch::FromDlpack(PyTuple_GetItem(p_ret, i), false)));
+      ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(i, FromDlpack(PyTuple_GetItem(ret.get(), i), false)));
     }
   } else {
     ORT_ENFORCE(output_size == 1, "Output size mismatch.");
-    ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(0, training::framework::torch::FromDlpack(p_ret, false)));
+    ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(0, FromDlpack(ret.get(), false)));
   }
-
-  Py_DECREF(p_ret);
-  Py_DECREF(p_args);
-  Py_DECREF(p_func);
-  Py_DECREF(p_module);
-  Py_DECREF(p_module_name);
 
   return Status::OK();
 }

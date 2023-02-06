@@ -3,6 +3,6 @@
 # Licensed under the MIT License.
 # --------------------------------------------------------------------------
 
-from ._triton_softmax import triton_softmax, transform_triton_softmax
+from ._triton_where_softmax import triton_where_softmax, triton_where_softmax_backward, transform_triton_where_softmax
 
-__all__ = ["triton_softmax", "transform_triton_softmax"]
+__all__ = ["triton_where_softmax", "triton_where_softmax_backward", "transform_triton_where_softmax"]
