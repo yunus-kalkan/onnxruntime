@@ -45,7 +45,7 @@ stages:
         ORT_EP_NAME: CPU
         GenerateDocumentation: false
         WITH_CACHE: true
-        MachinePool: 'Win-CPU-2019'
+        MachinePool: 'onnxruntime-win-cpu-2022'
 
 - stage: x64_release_dnnl
   dependsOn: []
