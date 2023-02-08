@@ -62,15 +62,16 @@ def get_ort_pipeline(model_name: str, directory: str, provider: str, disable_saf
     return pipe
 
 
-def get_torch_pipeline(model_name: str, disable_safety_checker: bool):
-    from diffusers import StableDiffusionPipeline
-    from torch import channels_last, float16
-
-    pipe = StableDiffusionPipeline.from_pretrained(
-        model_name, torch_dtype=float16, revision="fp16", use_auth_token=True
-    ).to("cuda")
-
-    pipe.unet.to(memory_format=channels_last)  # in-place operation
+def get_torch_pipeline(model_name: str, disable_safety_checker: bool, enable_xformers: bool):
+    import torch
+    from diffusers import DiffusionPipeline
+    pipe = DiffusionPipeline.from_pretrained(model_name, torch_dtype=torch.float16).to("cuda")
+    if enable_xformers:
+        from xformers.ops import MemoryEfficientAttentionFlashAttentionOp
+        pipe.enable_xformers_memory_efficient_attention(attention_op=MemoryEfficientAttentionFlashAttentionOp)
+        # Workaround for not accepting attention shape using VAE for Flash Attention
+        pipe.vae.enable_xformers_memory_efficient_attention(attention_op=None)
+    pipe.unet.to(memory_format=torch.channels_last)
 
     if disable_safety_checker:
         pipe.safety_checker = None
@@ -143,7 +144,7 @@ def run_ort(model_name: str, directory: str, provider: str, batch_size: int, dis
     run_ort_pipeline(pipe, batch_size, image_filename_prefix)
 
 
-def run_torch(model_name: str, batch_size: int, disable_safety_checker: bool):
+def run_torch(model_name: str, batch_size: int, disable_safety_checker: bool, enable_xformers: bool):
     import torch
 
     torch.backends.cudnn.enabled = True
@@ -153,7 +154,7 @@ def run_torch(model_name: str, batch_size: int, disable_safety_checker: bool):
     torch.set_grad_enabled(False)
 
     load_start = time.time()
-    pipe = get_torch_pipeline(model_name, disable_safety_checker)
+    pipe = get_torch_pipeline(model_name, disable_safety_checker, enable_xformers)
     load_end = time.time()
     print(f"Model loading took {load_end - load_start} seconds")
 
@@ -201,6 +202,14 @@ def parse_arguments():
     )
     parser.set_defaults(enable_safety_checker=False)
 
+    parser.add_argument(
+        "--enable_xformers",
+        required=False,
+        action="store_true",
+        help="Enable xformers for torch engine.",
+    )
+    parser.set_defaults(enable_xformers=False)
+
     parser.add_argument("-b", "--batch_size", type=int, default=1)
 
     args = parser.parse_args()
@@ -225,7 +234,7 @@ def main():
         provider = "CUDAExecutionProvider"  # TODO: use ["CUDAExecutionProvider", "CPUExecutionProvider"] in diffuers
         run_ort(sd_model, args.pipeline, provider, args.batch_size, not args.enable_safety_checker)
     else:
-        run_torch(sd_model, args.batch_size, not args.enable_safety_checker)
+        run_torch(sd_model, args.batch_size, not args.enable_safety_checker, args.enable_xformers)
 
 
 if __name__ == "__main__":
