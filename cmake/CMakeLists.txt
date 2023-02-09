@@ -486,6 +486,8 @@ if (WIN32)
     list(APPEND ORT_WARNING_FLAGS "/wd5054")
     # Enable warning: data member 'member' will be initialized after data member 'member2' / base class 'base_class'
     list(APPEND ORT_WARNING_FLAGS "/w15038")
+    # Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.32.31326\include\variant(1586,9): Warning C4189: '_Size': local variable is initialized but not referenced
+    list(APPEND ORT_WARNING_FLAGS "/wd4189")
 
     # set linker flags to minimize the binary size.
     if (MSVC)
