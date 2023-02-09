@@ -163,11 +163,12 @@ def triton_where_softmax_backward(dy, softmax_output, mask):
     return to_dlpack(dx)
 
 
-def get_producer(graph, arg):
+def get_producer(graph, arg, op_type):
     for node in graph.node:
-        for output in node.output:
-            if output == arg:
-                return node
+        if node.op_type == op_type:
+            for output in node.output:
+                if output == arg:
+                    return node
     return None
 
 
@@ -187,9 +188,15 @@ def transform_triton_where_softmax(graph):
     id = 0
     for node in graph.node:
         if node.op_type == "Softmax":
-            where_node = get_producer(graph, node.input[0])
-            cast1_node = get_producer(graph, where_node.input[2])
+            where_node = get_producer(graph, node.input[0], "Where")
+            if where_node is None:
+                continue
+            cast1_node = get_producer(graph, where_node.input[2], "Cast")
+            if cast1_node is None:
+                continue
             cast2_node = get_consumer(graph, node.output[0], "Cast")
+            if cast2_node is None:
+                continue
             remove_nodes.extend([node, where_node, cast1_node, cast2_node])
             triton_node = helper.make_node(
                 "TritonOp",
@@ -203,9 +210,15 @@ def transform_triton_where_softmax(graph):
             triton_nodes.append(triton_node)
             id += 1
         elif node.op_type == "SoftmaxGrad_13":
-            cast1_node = get_producer(graph, node.input[0])
+            cast1_node = get_producer(graph, node.input[0], "Cast")
+            if cast1_node is None:
+                continue
             where_node = get_consumer(graph, node.output[0], "Where")
+            if where_node is None:
+                continue
             cast2_node = get_consumer(graph, where_node.output[0], "Cast")
+            if cast2_node is None:
+                continue
             remove_nodes.extend([node, where_node, cast1_node, cast2_node])
             triton_node = helper.make_node(
                 "TritonOp",

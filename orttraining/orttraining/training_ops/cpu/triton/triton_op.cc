@@ -19,12 +19,18 @@ ONNX_OPERATOR_KERNEL_EX(TritonOp, kMSDomain, 1, kCpuExecutionProvider,
                         (*KernelDefBuilder::Create()).TypeConstraint("T", DataTypeImpl::AllFixedSizeTensorTypes()),
                         TritonOp);
 
+bool TritonOp::IsBoolOutput(size_t index) const {
+  ORT_ENFORCE(index < Node().OutputDefs().size(), "Output index out of range.");
+  return Node().OutputDefs()[index]->TypeAsProto()->tensor_type().elem_type() ==
+         ONNX_NAMESPACE::TensorProto_DataType::TensorProto_DataType_BOOL;
+}
+
 Status TritonOp::Compute(OpKernelContext* context) const {
   auto* p_ctx_internal = reinterpret_cast<OpKernelContextInternal*>(context);
   size_t input_size = static_cast<size_t>(p_ctx_internal->InputCount());
   size_t output_size = static_cast<size_t>(p_ctx_internal->OutputCount());
 
-  // Support only device tensor for now.
+  // TODO: add PyDict to pass all attributes as kwargs.
   PythonObjectPtr triton_module_name(PyUnicode_FromString("onnxruntime.training.ortmodule.triton"),
                                      PythonObjectDeleter);
   PythonObjectPtr triton_module(PyImport_Import(triton_module_name.get()), PythonObjectDeleter);
@@ -32,24 +38,24 @@ Status TritonOp::Compute(OpKernelContext* context) const {
   PythonObjectPtr op_func(PyObject_GetAttrString(triton_module.get(), func_name_.c_str()), PythonObjectDeleter);
   ORT_ENFORCE(op_func, "Function ", func_name_, " is not found in ORTModule Triton module.");
 
-  PythonObjectPtr args(PyTuple_New(input_size), PythonObjectDeleter);
+  PythonObjectPtr args(PyTuple_New(static_cast<Py_ssize_t>(input_size)), PythonObjectDeleter);
   ORT_ENFORCE(args, "Failed to create input tuple with size ", input_size, ".");
   for (size_t i = 0; i < input_size; ++i) {
-    PyObject* p_value = ToDlpack(*p_ctx_internal->GetInputMLValue(i));
+    PyObject* p_value = ToDlpack(*p_ctx_internal->GetInputMLValue(static_cast<int>(i)));
     // p_value reference stolen here.
-    PyTuple_SetItem(args.get(), i, p_value);
+    PyTuple_SetItem(args.get(), static_cast<Py_ssize_t>(i), p_value);
   }
 
-  // TODO: bool tensor not supported as output for now.
   PythonObjectPtr ret(PyObject_CallObject(op_func.get(), args.get()), PythonObjectDeleter);
   if (PyTuple_Check(ret.get())) {
     ORT_ENFORCE(static_cast<size_t>(PyTuple_Size(ret.get())) == output_size, "Output size mismatch.");
     for (size_t i = 0; i < output_size; ++i) {
-      ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(i, FromDlpack(PyTuple_GetItem(ret.get(), i), false)));
+      ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(
+          static_cast<int>(i), FromDlpack(PyTuple_GetItem(ret.get(), static_cast<Py_ssize_t>(i)), IsBoolOutput(i))));
     }
   } else {
     ORT_ENFORCE(output_size == 1, "Output size mismatch.");
-    ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(0, FromDlpack(ret.get(), false)));
+    ORT_THROW_IF_ERROR(p_ctx_internal->SetOutputMLValue(0, FromDlpack(ret.get(), IsBoolOutput(0))));
   }
 
   return Status::OK();

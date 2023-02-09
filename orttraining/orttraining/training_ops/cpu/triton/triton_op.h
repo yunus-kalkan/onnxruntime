@@ -15,6 +15,8 @@ class TritonOp final : public OpKernel {
   Status Compute(OpKernelContext* context) const override;
 
  private:
+  bool IsBoolOutput(size_t index) const;
+
   std::string func_name_;
 };
 
