@@ -31,9 +31,8 @@ REGISTER_KERNEL_TYPED(float)
 REGISTER_KERNEL_TYPED(MLFloat16)
 
 template <typename T>
-
 MultiHeadAttention<T>::MultiHeadAttention(const OpKernelInfo& info)
-    : CudaKernel(info), fused_fp16_cross_attention_kernel_(nullptr) {
+    : CudaKernel(info), fused_fp16_cross_attention_kernel_(nullptr), cumulated_sequence_length_q_cache_(), cumulated_sequence_length_kv_cache_() {
   int64_t num_heads = 0;
   ORT_ENFORCE(info.GetAttr("num_heads", &num_heads).IsOK() && num_heads > 0);
   num_heads_ = static_cast<int>(num_heads);
@@ -185,6 +184,8 @@ Status MultiHeadAttention<T>::ComputeInternal(OpKernelContext* context) const {
   data.fused_runner = reinterpret_cast<void*>(fused_runner);
   data.fused_cross_attention_kernel = fused_cross_attention_kernel;
   data.use_memory_efficient_attention = use_memory_efficient_attention;
+  data.cumulated_sequence_length_q_cache = &(this->cumulated_sequence_length_q_cache_);
+  data.cumulated_sequence_length_kv_cache = &(this->cumulated_sequence_length_kv_cache_);
 
   cublasHandle_t cublas = GetCublasHandle(context);
   return QkvToContext<CudaT>(

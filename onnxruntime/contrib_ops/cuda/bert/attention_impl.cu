@@ -49,6 +49,8 @@ using namespace cub;
 #define CHECK_CUDA(expr) CUDA_RETURN_IF_ERROR(expr)
 #define CUDA_MEMORY_ALIGNMENT 256
 
+constexpr int kCumulatedSequenceLengthCacheMaxBatchSize = 64;
+
 namespace onnxruntime {
 namespace contrib {
 namespace cuda {
@@ -60,6 +62,46 @@ static size_t AlignTo(size_t a, size_t b) {
 size_t AlignSize(size_t bytes) {
   const size_t bytesAligned = AlignTo(bytes, CUDA_MEMORY_ALIGNMENT);
   return bytesAligned;
+}
+
+Status CumulatedSequenceLengthCache::Allocate(int32_t max_batch_size) {
+  if (this->max_batch_size == 0) {
+    void* cudaMem{nullptr};
+    CUDA_RETURN_IF_ERROR(cudaMalloc(&cudaMem, sizeof(int32_t) * (max_batch_size + 1)));
+    make_cuda_shared(buffer, cudaMem);
+    this->max_batch_size = max_batch_size;
+  }
+
+  return Status::OK();
+}
+
+void CumulatedSequenceLengthCache::Initialize(int32_t sequence_length, cudaStream_t stream) {
+  if (this->sequence_length != sequence_length) {
+    LaunchTrtSequenceOffset(reinterpret_cast<int32_t*>(buffer.get()), nullptr, this->max_batch_size, sequence_length, stream);
+    this->sequence_length = sequence_length;
+  }
+}
+
+int* GetCumulatedSequenceLength(CumulatedSequenceLengthCache* cache,
+                                const int* mask_index,
+                                int batch_size,
+                                int sequence_length,
+                                cudaStream_t stream,
+                                void* scratch_buffer) {
+  if (mask_index == nullptr && cache != nullptr) {
+    if (cache->max_batch_size == 0) {
+      ORT_THROW_IF_ERROR(cache->Allocate(kCumulatedSequenceLengthCacheMaxBatchSize));
+    }
+
+    if (batch_size <= cache->max_batch_size) {
+      cache->Initialize(sequence_length, stream);
+      return reinterpret_cast<int*>(cache->buffer.get());
+    }
+  }
+
+  int* sequence_offset = reinterpret_cast<int*>(scratch_buffer);
+  LaunchTrtSequenceOffset(sequence_offset, mask_index, batch_size, sequence_length, stream);
+  return sequence_offset;
 }
 
 size_t GetAttentionScratchSize(
@@ -533,18 +575,21 @@ Status QkvToContext(
 
   if (data.fused_cross_attention_kernel != nullptr) {
     assert(qkv_format == AttentionQkvFormat::Q_KV_BSNH_BSN2H);
-    int* q_sequence_offset = reinterpret_cast<int*>(scratch1);
-    LaunchTrtSequenceOffset(q_sequence_offset, nullptr, batch_size, sequence_length, stream);
-    CUDA_RETURN_IF_ERROR(cudaGetLastError());
-
-    DUMP_TENSOR_D("q_sequence_offset", q_sequence_offset, 1, batch_size + 1);
 
     // We only enable fused cross attention when there is no key padding mask.
     // Otherwise, key have effective batch size 2 * batch_size, which is different from batch_size of query.
     assert(data.mask_index == nullptr);
 
+    int* q_sequence_offset = GetCumulatedSequenceLength(data.cumulated_sequence_length_q_cache,
+                                                        data.mask_index, batch_size, sequence_length, stream,
+                                                        scratch1);
+
+    DUMP_TENSOR_D("q_sequence_offset", q_sequence_offset, 1, batch_size + 1);
+
     int* kv_sequence_offset = q_sequence_offset + (GetSequenceOffsetSize(batch_size, false) / sizeof(int));
-    LaunchTrtSequenceOffset(kv_sequence_offset, data.mask_index, batch_size, kv_sequence_length, stream);
+    kv_sequence_offset = GetCumulatedSequenceLength(data.cumulated_sequence_length_kv_cache,
+                                                    data.mask_index, batch_size, kv_sequence_length, stream,
+                                                    kv_sequence_offset);
     CUDA_RETURN_IF_ERROR(cudaGetLastError());
 
     DUMP_TENSOR_D("kv_sequence_offset", kv_sequence_offset, 1, batch_size + 1);
@@ -584,7 +629,9 @@ Status QkvToContext(
     if (parameters.mask_type == AttentionMaskType::MASK_2D_KEY_PADDING) {
       LaunchTrtSequenceOffset2d(sequence_offset, data.mask_index, batch_size, sequence_length, stream);
     } else {
-      LaunchTrtSequenceOffset(sequence_offset, data.mask_index, batch_size, sequence_length, stream);
+      sequence_offset = GetCumulatedSequenceLength(data.cumulated_sequence_length_q_cache,
+                                                   data.mask_index, batch_size, sequence_length, stream,
+                                                   sequence_offset);
     }
     CUDA_RETURN_IF_ERROR(cudaGetLastError());
 
