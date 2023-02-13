@@ -20,20 +20,16 @@ def _where_softmax_kernel(
     softmax_output_ptr,
     input_ptr,
     mask_ptr,
-    input_strdie_0,
-    input_stride_1,
-    mask_stride_0,
-    mask_stride_1,
+    strdie_0,
+    stride_1,
     n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
     row_idx = tl.program_id(0)
     row_input_start_ptr = input_ptr + row_idx * n_cols
-    q0 = row_idx // input_strdie_0
-    r0 = row_idx % input_strdie_0
-    q1 = r0 // input_stride_1
-    r1 = r0 % input_stride_1
-    row_mask_start_ptr = mask_ptr + (q0 * mask_stride_0 + q1 * mask_stride_1 + r1) * n_cols
+    q = row_idx // strdie_0
+    r = (row_idx % strdie_0) % stride_1
+    row_mask_start_ptr = mask_ptr + (q * stride_1 + r) * n_cols
     col_offsets = tl.arange(0, BLOCK_SIZE)
     input_ptrs = row_input_start_ptr + col_offsets
     mask_ptrs = row_mask_start_ptr + col_offsets
@@ -56,9 +52,8 @@ def _where_softmax_kernel(
 def triton_where_softmax(x, mask):
     x = _from_dlpack(x)
     mask = _from_dlpack(mask)
-    x0, x1, x2, x3 = x.shape
-    _, m1, m2, _ = mask.shape
-    n_cols = x3
+    s0, s1, s2, s3 = x.shape
+    n_cols = s3
     # The block size is the smallest power of two greater than the number of columns in `x`
     BLOCK_SIZE = triton.next_power_of_2(n_cols)
     # Another trick we can use is to ask the compiler to use more threads per row by
@@ -73,15 +68,13 @@ def triton_where_softmax(x, mask):
     # Allocate output
     softmax_output = torch.empty_like(x, dtype=torch.float32)
     output = torch.empty_like(x)
-    _where_softmax_kernel[(x0 * x1 * x2,)](
+    _where_softmax_kernel[(s0 * s1 * s2,)](
         output,
         softmax_output,
         x,
         mask,
-        x1 * x2,
-        x2,
-        m1 * m2,
-        m2,
+        s1 * s2,
+        s2,
         n_cols,
         num_warps=num_warps,
         BLOCK_SIZE=BLOCK_SIZE,
@@ -95,21 +88,17 @@ def _where_softmax_backward_kernel(
     dy_ptr,
     softmax_output_ptr,
     mask_ptr,
-    input_strdie_0,
-    input_stride_1,
-    mask_stride_0,
-    mask_stride_1,
+    strdie_0,
+    stride_1,
     n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
     row_idx = tl.program_id(0)
     row_dy_start_ptr = dy_ptr + row_idx * n_cols
     row_softmax_output_start_ptr = softmax_output_ptr + row_idx * n_cols
-    q0 = row_idx // input_strdie_0
-    r0 = row_idx % input_strdie_0
-    q1 = r0 // input_stride_1
-    r1 = r0 % input_stride_1
-    row_mask_start_ptr = mask_ptr + (q0 * mask_stride_0 + q1 * mask_stride_1 + r1) * n_cols
+    q = row_idx // strdie_0
+    r = (row_idx % strdie_0) % stride_1
+    row_mask_start_ptr = mask_ptr + (q * stride_1 + r) * n_cols
     col_offsets = tl.arange(0, BLOCK_SIZE)
     dy_ptrs = row_dy_start_ptr + col_offsets
     softmax_output_ptrs = row_softmax_output_start_ptr + col_offsets
@@ -131,9 +120,8 @@ def triton_where_softmax_backward(dy, softmax_output, mask):
     dy = _from_dlpack(dy)
     softmax_output = _from_dlpack(softmax_output)
     mask = _from_dlpack(mask)
-    x0, x1, x2, x3 = dy.shape
-    _, m1, m2, _ = mask.shape
-    n_cols = x3
+    s0, s1, s2, s3 = dy.shape
+    n_cols = s3
     # The block size is the smallest power of two greater than the number of columns in `x`
     BLOCK_SIZE = triton.next_power_of_2(n_cols)
     # Another trick we can use is to ask the compiler to use more threads per row by
@@ -147,15 +135,13 @@ def triton_where_softmax_backward(dy, softmax_output, mask):
         num_warps = 16
     # Allocate output
     dx = torch.empty_like(dy)
-    _where_softmax_backward_kernel[(x0 * x1 * x2,)](
+    _where_softmax_backward_kernel[(s0 * s1 * s2,)](
         dx,
         dy,
         softmax_output,
         mask,
-        x1 * x2,
-        x2,
-        m1 * m2,
-        m2,
+        s1 * s2,
+        s2,
         n_cols,
         num_warps=num_warps,
         BLOCK_SIZE=BLOCK_SIZE,
@@ -202,7 +188,7 @@ def transform_triton_where_softmax(graph):
                 "TritonOp",
                 [cast1_node.input[0], where_node.input[0]],
                 [node.output[0], cast2_node.output[0]],
-                "TritonOp_" + str(id),
+                "TritonOp_Where_Softmax_" + str(id),
                 None,
                 "com.microsoft",
                 func_name="triton_where_softmax",
@@ -224,7 +210,7 @@ def transform_triton_where_softmax(graph):
                 "TritonOp",
                 [cast1_node.input[0], node.input[1], where_node.input[0]],
                 [cast2_node.output[0]],
-                "TritonOp_" + str(id),
+                "TritonOp_Where_Softmax_Backward_" + str(id),
                 None,
                 "com.microsoft",
                 func_name="triton_where_softmax_backward",
