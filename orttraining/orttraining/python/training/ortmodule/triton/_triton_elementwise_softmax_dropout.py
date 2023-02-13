@@ -22,7 +22,6 @@ def _elementwise_softmax_dropout_kernel(
     fst_ptr,
     snd_ptr,
     trd_ptr,
-    fth_ptr,
     strdie_0,
     stride_1,
     scale,
@@ -35,21 +34,18 @@ def _elementwise_softmax_dropout_kernel(
     row_start = row_idx * n_cols
     row_fst_start_ptr = fst_ptr + row_start
     row_snd_start_ptr = snd_ptr + row_start
-    row_trd_start_ptr = trd_ptr + row_start
     q = row_idx // strdie_0
     r = (row_idx % strdie_0) % stride_1
-    row_fth_start_ptr = fth_ptr + (q * stride_1 + r) * n_cols
+    row_trd_start_ptr = trd_ptr + (q * stride_1 + r) * n_cols
     col_offsets = tl.arange(0, BLOCK_SIZE)
     mask = col_offsets < n_cols
     fst_ptrs = row_fst_start_ptr + col_offsets
     snd_ptrs = row_snd_start_ptr + col_offsets
     trd_ptrs = row_trd_start_ptr + col_offsets
-    fth_ptrs = row_fth_start_ptr + col_offsets
     fst_row = tl.load(fst_ptrs, mask=mask)
     snd_row = tl.load(snd_ptrs, mask=mask)
     trd_row = tl.load(trd_ptrs, mask=mask)
-    fth_row = tl.load(fth_ptrs, mask=mask)
-    row = (fst_row + snd_row + trd_row * scale - fth_row).to(tl.float32)
+    row = ((fst_row + snd_row) * scale - trd_row).to(tl.float32)
     row_minus_max = row - tl.max(row, axis=0)
     numerator = tl.exp(row_minus_max)
     denominator = tl.sum(numerator, axis=0)
@@ -68,11 +64,10 @@ def _elementwise_softmax_dropout_kernel(
     tl.store(softmax_output_ptrs, softmax_output, mask=mask)
 
 
-def triton_elementwise_softmax_dropout(fst, snd, trd, fth):
+def triton_elementwise_softmax_dropout(fst, snd, trd):
     fst = _from_dlpack(fst)
     snd = _from_dlpack(snd)
     trd = _from_dlpack(trd)
-    fth = _from_dlpack(fth)
     p = 1.0 - 0.1
     scale = 0.125
     seed = 2333
@@ -101,7 +96,6 @@ def triton_elementwise_softmax_dropout(fst, snd, trd, fth):
         fst,
         snd,
         trd,
-        fth,
         s1 * s2,
         s2,
         scale,
@@ -212,20 +206,29 @@ def transform_triton_elementwise_softmax_dropout(graph):
             mul1_node = get_producer(graph, sub_node.input[0], "Mul")
             if mul1_node is None:
                 continue
-            add1_node = get_producer(graph, mul1_node.input[0], "Add")
-            if add1_node is None:
+            add_node = get_producer(graph, mul1_node.input[0], "Add")
+            if add_node is None:
                 continue
-            add2_node = get_producer(graph, add1_node.input[0], "Add")
-            if add2_node is None:
+            cast1_node = get_consumer(graph, node.output[0], "Cast")
+            if cast1_node is None:
                 continue
-            dropout_node = get_consumer(graph, node.output[0], "Dropout")
+            dropout_node = get_consumer(graph, cast1_node.output[0], "Dropout")
             if dropout_node is None:
+                continue
+            cast2_node = get_consumer(graph, dropout_node.output[0], "Cast")
+            if cast2_node is None:
                 continue
             softmaxgrad_node = get_consumer(graph, node.output[0], "SoftmaxGrad_13")
             if softmaxgrad_node is None:
                 continue
-            dropoutgrad_node = get_producer(graph, softmaxgrad_node.input[0], "DropoutGrad")
+            cast3_node = get_producer(graph, softmaxgrad_node.input[0], "Cast")
+            if cast3_node is None:
+                continue
+            dropoutgrad_node = get_producer(graph, cast3_node.input[0], "DropoutGrad")
             if dropoutgrad_node is None:
+                continue
+            cast4_node = get_producer(graph, dropoutgrad_node.input[0], "Cast")
+            if cast4_node is None:
                 continue
             identity_node = get_consumer(graph, softmaxgrad_node.output[0], "Identity")
             if identity_node is None:
@@ -238,19 +241,22 @@ def transform_triton_elementwise_softmax_dropout(graph):
                     node,
                     sub_node,
                     mul1_node,
-                    add1_node,
-                    add2_node,
+                    add_node,
+                    cast1_node,
                     dropout_node,
+                    cast2_node,
                     softmaxgrad_node,
+                    cast3_node,
                     dropoutgrad_node,
+                    cast4_node,
                     identity_node,
                     mul2_node,
                 ]
             )
             triton_node = helper.make_node(
                 "TritonOp",
-                [add2_node.input[0], add2_node.input[1], add1_node.input[1], sub_node.input[1]],
-                [dropout_node.output[0], dropout_node.output[1], node.output[0]],
+                [add_node.input[0], add_node.input[1], sub_node.input[1]],
+                [cast2_node.output[0], dropout_node.output[1], node.output[0]],
                 "TritonOp_Elementwise_Softmax_Dropout_" + str(id),
                 None,
                 "com.microsoft",
@@ -259,7 +265,7 @@ def transform_triton_elementwise_softmax_dropout(graph):
             triton_nodes.append(triton_node)
             triton_node = helper.make_node(
                 "TritonOp",
-                [dropoutgrad_node.input[0], dropoutgrad_node.input[1], softmaxgrad_node.input[1]],
+                [cast4_node.input[0], dropoutgrad_node.input[1], softmaxgrad_node.input[1]],
                 [mul2_node.output[0]],
                 "TritonOp_Elementwise_Softmax_Dropout_Backward_" + str(id),
                 None,
