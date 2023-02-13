@@ -4,7 +4,7 @@ REM Licensed under the MIT License.
 @ECHO ON
 SETLOCAL EnableDelayedExpansion
 
-SET TargetFramework=netcoreapp5.0
+SET TargetFramework=netcoreapp6.0
 SET TargetArch=x64
 SET dn="C:\Program Files\dotnet\dotnet"
 SET CurrentOnnxRuntimeVersion=""
@@ -54,7 +54,7 @@ dir test\Microsoft.ML.OnnxRuntime.EndToEndTests\packages\
 
 IF "%PACKAGENAME%"=="Microsoft.ML.OnnxRuntime.Gpu" (
   set TESTONGPU=ON
-  %dn% test -p:DefineConstants=USE_TENSORRT test\Microsoft.ML.OnnxRuntime.EndToEndTests\Microsoft.ML.OnnxRuntime.EndToEndTests.csproj --no-restore --filter TensorRT 
+  %dn% test -p:DefineConstants=USE_TENSORRT test\Microsoft.ML.OnnxRuntime.EndToEndTests\Microsoft.ML.OnnxRuntime.EndToEndTests.csproj --no-restore --filter TensorRT
 
   IF NOT errorlevel 0 (
     @echo "Failed to build or execute the end-to-end test"
