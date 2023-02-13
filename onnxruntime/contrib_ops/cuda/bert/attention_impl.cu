@@ -264,7 +264,7 @@ Status PrepareQkv(contrib::AttentionParameters& parameters,
 
   T* qkv = data.workspace;
 
-  bool use_fused_kernel = (nullptr != fused_runner && data.bias != nullptr && !parameters.is_unidirectional);
+  bool use_fused_kernel = (nullptr != fused_runner && !parameters.is_unidirectional);
   bool use_fused_causal = (nullptr != fused_runner && parameters.is_unidirectional);
 
   // Default format for memory efficient attention.
@@ -272,6 +272,7 @@ Status PrepareQkv(contrib::AttentionParameters& parameters,
   DUMP_TENSOR_INIT();
   if (nullptr != data.gemm_buffer) {
     if (data.bias == nullptr) {
+      assert(nullptr == fused_runner);
       // For quantized attention, bias has been added so only need transpose here.
       // gemm_buffer should be BxSx3xNxH => qkv: 3xBxNxSxH
       assert(qk_head_size == v_head_size);
@@ -303,6 +304,31 @@ Status PrepareQkv(contrib::AttentionParameters& parameters,
                              data.gemm_buffer, data.bias, qkv,
                              true, v_head_size, qkv_add_bias, 3);
     }
+  } else if (data.key == nullptr) {  // gemm_buffer == nullptr and packed qkv
+    assert(data.bias == nullptr);
+    assert(qk_head_size == v_head_size);
+
+    DUMP_TENSOR_D("packed_qkv", data.query, batch_size * sequence_length, num_heads, 3, qk_head_size);
+
+    if (use_memory_efficient_attention) {
+      // unpack qkv to BSNH. Note that there is no bias so we need not output query to q.
+      constexpr int format = 4;
+      T* qkv_add_bias = nullptr;
+      LaunchAddBiasTranspose(stream, 3, format, max_threads_per_block,
+                             batch_size, sequence_length, num_heads, qk_head_size,
+                             data.query, data.bias, qkv,
+                             true, v_head_size, qkv_add_bias, 3);
+      DUMP_TENSOR_D("k(BSNH)", q, batch_size * sequence_length, num_heads, qk_head_size);
+      DUMP_TENSOR_D("k(BSNH)", k, batch_size * kv_sequence_length, num_heads, qk_head_size);
+      DUMP_TENSOR_D("v(BSNH)", v, batch_size * kv_sequence_length, num_heads, v_head_size);
+      qkv_format = AttentionQkvFormat::Q_K_V_BSNH;
+    } else {
+      if (!use_fused_kernel) {
+        return ORT_MAKE_STATUS(ONNXRUNTIME, NOT_IMPLEMENTED, "packed QKV format is not implemented for current GPU. Please disable it in fusion options.");
+      }
+
+      qkv_format = AttentionQkvFormat::QKV_BSN3H;
+    }
   } else if (data.value == nullptr) {  // gemm_buffer == nullptr and packed kv
     // TODO: unpack kv to BNSH for unfused kernel so that we can remove the following constraint.
     // CheckInputs verified this constraint.
@@ -330,7 +356,7 @@ Status PrepareQkv(contrib::AttentionParameters& parameters,
 
       qkv_format = AttentionQkvFormat::Q_KV_BSNH_BSN2H;
     }
-  } else {  // gemm_buffer == nullptr and not packed kv
+  } else {  // gemm_buffer == nullptr and not packed
     assert(data.query != nullptr && data.key != nullptr && data.value != nullptr && data.bias != nullptr);
 
     DUMP_TENSOR_D("query", data.query, batch_size * sequence_length, num_heads, qk_head_size);
