@@ -46,9 +46,6 @@ limitations under the License.
 using namespace onnxruntime::cuda;
 using namespace cub;
 
-#define CHECK_CUDA(expr) CUDA_RETURN_IF_ERROR(expr)
-#define CUDA_MEMORY_ALIGNMENT 256
-
 constexpr int kCumulatedSequenceLengthCacheMaxBatchSize = 64;
 
 namespace onnxruntime {
@@ -60,7 +57,8 @@ static size_t AlignTo(size_t a, size_t b) {
 }
 
 size_t AlignSize(size_t bytes) {
-  const size_t bytesAligned = AlignTo(bytes, CUDA_MEMORY_ALIGNMENT);
+  const size_t kMemoryAlignment = 256;
+  const size_t bytesAligned = AlignTo(bytes, kMemoryAlignment);
   return bytesAligned;
 }
 
@@ -854,15 +852,15 @@ Status DecoderQkvToContext(
 
   if (has_layer_state) {
     if (use_past && static_kv) {
-      CHECK_CUDA(cudaMemcpyAsync(new_key_cache, key_cache, kv_sequence_length * BHN * sizeof(T),
-                                 cudaMemcpyDeviceToDevice, stream));
-      CHECK_CUDA(cudaMemcpyAsync(new_value_cache, value_cache, kv_sequence_length * BHN * sizeof(T),
-                                 cudaMemcpyDeviceToDevice, stream));
+      CUDA_RETURN_IF_ERROR(cudaMemcpyAsync(new_key_cache, key_cache, kv_sequence_length * BHN * sizeof(T),
+                                           cudaMemcpyDeviceToDevice, stream));
+      CUDA_RETURN_IF_ERROR(cudaMemcpyAsync(new_value_cache, value_cache, kv_sequence_length * BHN * sizeof(T),
+                                           cudaMemcpyDeviceToDevice, stream));
     } else {
-      CHECK_CUDA(cudaMemcpyAsync(new_key_cache, k, kv_sequence_length * BHN * sizeof(T),
-                                 cudaMemcpyDeviceToDevice, stream));
-      CHECK_CUDA(cudaMemcpyAsync(new_value_cache, v, kv_sequence_length * BHN * sizeof(T),
-                                 cudaMemcpyDeviceToDevice, stream));
+      CUDA_RETURN_IF_ERROR(cudaMemcpyAsync(new_key_cache, k, kv_sequence_length * BHN * sizeof(T),
+                                           cudaMemcpyDeviceToDevice, stream));
+      CUDA_RETURN_IF_ERROR(cudaMemcpyAsync(new_value_cache, v, kv_sequence_length * BHN * sizeof(T),
+                                           cudaMemcpyDeviceToDevice, stream));
     }
   }
 

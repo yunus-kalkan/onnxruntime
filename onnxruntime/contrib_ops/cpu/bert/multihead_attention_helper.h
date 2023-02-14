@@ -116,7 +116,7 @@ Status CheckInputs(const T* query,
   if (key_padding_mask != nullptr) {
     mask_type = AttentionMaskType::MASK_UNKNOWN;
     const auto& mask_dims = key_padding_mask->Shape().GetDims();
-    if (mask_dims.size() == 1 && mask_dims[0] == static_cast<int64_t>(kv_sequence_length)) {
+    if (mask_dims.size() == 1 && mask_dims[0] == static_cast<int64_t>(batch_size)) {
       mask_type = AttentionMaskType::MASK_1D_KEY_SEQ_LEN;
     } else if (mask_dims.size() == 2 && mask_dims[0] == static_cast<int64_t>(batch_size) && mask_dims[1] == static_cast<int64_t>(kv_sequence_length)) {
       mask_type = AttentionMaskType::MASK_2D_KEY_PADDING;
