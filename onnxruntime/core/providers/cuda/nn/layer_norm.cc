@@ -6,6 +6,7 @@
 #include "core/providers/cuda/nn/layer_norm_impl.h"
 #include "core/providers/cuda/nn/trt_layer_norm_impl.h"
 #include "core/providers/cuda/cuda_common.h"
+#include "core/platform/env_var_utils.h"
 
 namespace onnxruntime {
 namespace cuda {
@@ -22,12 +23,15 @@ REGISTER_KERNEL_TYPED(double, float)
 REGISTER_KERNEL_TYPED(MLFloat16, float)
 REGISTER_KERNEL_TYPED(BFloat16, float)
 
+constexpr const char* kUseTrtLayerNormCudaKernel = "ORT_USE_TRT_LAYER_NORM_CUDA_KERNEL";
+
 template <typename T, typename U, typename V, bool simplified>
 LayerNorm<T, U, V, simplified>::LayerNorm(const OpKernelInfo& op_kernel_info) : CudaKernel(op_kernel_info) {
   ORT_ENFORCE(op_kernel_info.GetAttr("axis", &axis_).IsOK());
   float tmp_epsilon;
   ORT_ENFORCE(op_kernel_info.GetAttr<float>("epsilon", &tmp_epsilon).IsOK());
   epsilon_ = tmp_epsilon;
+  use_trt_layer_norm_ = ParseEnvironmentVariableWithDefault<bool>(kUseTrtLayerNormCudaKernel, false);
 }
 
 template <typename T, typename U, typename V>
@@ -42,7 +46,7 @@ bool TrtLayerNorm<float, float, float>(cudaStream_t stream, float* output, const
 }
 
 template <>
-bool TrtLayerNorm<half, half, half>(cudaStream_t stream, half* output, const half* input, const half* gamma, const half* beta, int n1, int n2, double epsilon) {
+bool TrtLayerNorm<half, float, half>(cudaStream_t stream, half* output, const half* input, const half* gamma, const half* beta, int n1, int n2, double epsilon) {
   computeLayerNorm<half>(n1, n2, input, gamma, beta, output, static_cast<float>(epsilon), stream);
   return true;
 }
@@ -113,8 +117,10 @@ Status LayerNorm<T, U, V, simplified>::ComputeInternal(OpKernelContext* ctx) con
 
   // For stable diffusion inference.
   if (!simplified && mean_data == nullptr && inv_var_data == nullptr) {
-    if (TrtLayerNorm<CudaT, CudaU, CudaV>(Stream(ctx), Y_data, X_data, scale_data, bias_data, n1, n2, epsilon_)) {
-      return Status::OK();
+    if (this->use_trt_layer_norm_) {
+      if (TrtLayerNorm<CudaT, CudaU, CudaV>(Stream(ctx), Y_data, X_data, scale_data, bias_data, n1, n2, epsilon_)) {
+        return Status::OK();
+      }
     }
   }
 

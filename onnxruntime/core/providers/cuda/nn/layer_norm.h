@@ -21,6 +21,7 @@ class LayerNorm final : public CudaKernel {
  private:
   int64_t axis_;
   double epsilon_;
+  bool use_trt_layer_norm_;
 };
 
 }  // namespace cuda
