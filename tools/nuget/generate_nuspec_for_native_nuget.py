@@ -186,7 +186,7 @@ def generate_dependencies(xml_text, package_name, version):
     if package_name == "Microsoft.AI.MachineLearning":
         xml_text.append("<dependencies>")
         # Support .Net Core
-        xml_text.append('<group targetFramework="net5.0">')
+        xml_text.append('<group targetFramework="net6.0">')
         xml_text.append(dml_dependency)
         xml_text.append("</group>")
         # UAP10.0.16299, This is the earliest release of the OS that supports .NET Standard apps
@@ -478,21 +478,21 @@ def generate_files(line_list, args):
             + '" target="winmds\\Microsoft.AI.MachineLearning.Experimental.winmd" />'
         )
         if args.target_architecture == "x64":
-            interop_dll_path = "Microsoft.AI.MachineLearning.Interop\\net5.0-windows10.0.17763.0"
+            interop_dll_path = "Microsoft.AI.MachineLearning.Interop\\net6.0-windows"
             interop_dll = interop_dll_path + "\\Microsoft.AI.MachineLearning.Interop.dll"
             files_list.append(
                 "<file src="
                 + '"'
                 + os.path.join(args.native_build_path, interop_dll)
-                + '" target="lib\\net5.0\\Microsoft.AI.MachineLearning.Interop.dll" />'
+                + '" target="lib\\net6.0\\Microsoft.AI.MachineLearning.Interop.dll" />'
             )
-            interop_pdb_path = "Microsoft.AI.MachineLearning.Interop\\net5.0-windows10.0.17763.0"
+            interop_pdb_path = "Microsoft.AI.MachineLearning.Interop\\net6.0-windows"
             interop_pdb = interop_pdb_path + "\\Microsoft.AI.MachineLearning.Interop.pdb"
             files_list.append(
                 "<file src="
                 + '"'
                 + os.path.join(args.native_build_path, interop_pdb)
-                + '" target="lib\\net5.0\\Microsoft.AI.MachineLearning.Interop.pdb" />'
+                + '" target="lib\\net6.0\\Microsoft.AI.MachineLearning.Interop.pdb" />'
             )
 
     if args.package_name == "Microsoft.ML.OnnxRuntime.Snpe":
@@ -840,8 +840,8 @@ def generate_files(line_list, args):
             interop_targets = "Microsoft.AI.MachineLearning.targets"
             windowsai_net50_props = os.path.join(args.sources_path, "csharp", "src", interop_src, interop_props)
             windowsai_net50_targets = os.path.join(args.sources_path, "csharp", "src", interop_src, interop_targets)
-            files_list.append("<file src=" + '"' + windowsai_net50_props + '" target="build\\net5.0" />')
-            files_list.append("<file src=" + '"' + windowsai_net50_targets + '" target="build\\net5.0" />')
+            files_list.append("<file src=" + '"' + windowsai_net50_props + '" target="build\\net6.0" />')
+            files_list.append("<file src=" + '"' + windowsai_net50_targets + '" target="build\\net6.0" />')
 
     if is_cpu_package or is_cuda_gpu_package or is_dml_package or is_mklml_package or is_snpe_package:
         # Process props file
