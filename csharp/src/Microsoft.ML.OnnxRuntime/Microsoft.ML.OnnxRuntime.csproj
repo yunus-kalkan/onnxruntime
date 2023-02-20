@@ -45,7 +45,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(SelectedTargets)'=='Net6'">
-    <TargetFrameworks>$(Net6Targets)</TargetFrameworks>
+    <TargetFrameworks>$(BaseTargets);$(XamarinTargets);$(Net6Targets)</TargetFrameworks>
   </PropertyGroup>
 
   <!-- nuget package creation -->
