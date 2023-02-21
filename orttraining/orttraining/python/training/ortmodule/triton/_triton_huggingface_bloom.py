@@ -18,13 +18,14 @@ from .._graph_transformer_registry import register_graph_transformer
 def _where_softmax_kernel(
     output_ptr,
     softmax_output_ptr,
-    input_ptr,
-    mask_ptr,
-    strdie_0,
-    stride_1,
+    input_ptr,  # [batch_size, 16, seq_len, seq_len]
+    mask_ptr,  # [batch_size, 1, seq_len, seq_len]
+    strdie_0,  # 16 * seq_len
+    stride_1,  # seq_len
     n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
+    # softmax(where(mask, -3.4028234663852886e38, input.to(float32)), axis=-1).to(float16)
     row_idx = tl.program_id(0)
     row_input_start_ptr = input_ptr + row_idx * n_cols
     q = row_idx // strdie_0
@@ -76,6 +77,7 @@ def triton_where_softmax(x, mask):
         s1 * s2,
         s2,
         n_cols,
+        num_stages=4,
         num_warps=num_warps,
         BLOCK_SIZE=BLOCK_SIZE,
     )
@@ -85,14 +87,15 @@ def triton_where_softmax(x, mask):
 @triton.jit
 def _where_softmax_backward_kernel(
     dx_ptr,
-    dy_ptr,
-    softmax_output_ptr,
-    mask_ptr,
-    strdie_0,
-    stride_1,
+    dy_ptr,  # [batch_size, 16, seq_len, seq_len]
+    softmax_output_ptr,  # [batch_size, 16, seq_len, seq_len]
+    mask_ptr,  # [batch_size, 1, seq_len, seq_len]
+    strdie_0,  # 16 * seq_len
+    stride_1,  # seq_len
     n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
+    # where(mask, -3.4028234663852886e38, softmax_grad(dy.to(float32), softmax_output, axis=-1)).to(float16)
     row_idx = tl.program_id(0)
     row_dy_start_ptr = dy_ptr + row_idx * n_cols
     row_softmax_output_start_ptr = softmax_output_ptr + row_idx * n_cols
@@ -143,6 +146,7 @@ def triton_where_softmax_backward(dy, softmax_output, mask):
         s1 * s2,
         s2,
         n_cols,
+        num_stages=4,
         num_warps=num_warps,
         BLOCK_SIZE=BLOCK_SIZE,
     )
