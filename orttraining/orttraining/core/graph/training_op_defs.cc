@@ -4243,6 +4243,31 @@ Return true if all elements are true and false otherwise.
       .TypeAndShapeInferenceFunction([](InferenceContext& ctx) {
         propagateShapeAndTypeFromFirstInput(ctx);
       });
+
+  ONNX_CONTRIB_OPERATOR_SCHEMA(LSTMGrad)
+      .SetDomain(kMSDomain)
+      .SinceVersion(1)
+      .SetDoc(
+          "LSTMGrad op that computes the partial derivative of the loss with respect to LSTM inputs: "
+          "a) The input sequence, b) Weight parameters, c) Recurrence weight parameters, d) Bias parameters, "
+          "e) Peephole weight parameters, f) Previous cell state, g) Previous hidden state.")
+      .Input(0, "dY", "Gradient of loss with respect to the output Y of the LSTM cell", "T")
+      .Input(1, "dY_h", "Gradient of loss with respect to the output Y_h of the LSTM cell", "T")
+      .Input(2, "dY_c", "Gradient of loss with respect to the output Y_c of the LSTM cell", "T")
+      .Output(0, "dX", "Gradient of loss with respect to the input sequence (to the LSTM cell).", "T")
+      .Output(0, "dW", "Gradient of loss with respect to the weight parameters (of the LSTM cell).", "T")
+      .Output(0, "dR", "Gradient of loss with respect to the recurrence weight parameters (of the LSTM cell).", "T")
+      .Output(0, "dB", "Gradient of loss with respect to the bias parameters (of the LSTM cell).", "T")
+      .Output(0, "dP", "Gradient of loss with respect to the peephole parameters (of the LSTM cell).", "T")
+      .Output(0, "dC_tminus1", "Gradient of loss with respect to the previous cell state (of the LSTM cell).", "T")
+      .Output(0, "dH_tminus1", "Gradient of loss with respect to the previous hidden state (of the LSTM cell).", "T")
+      .TypeConstraint(
+          "T",
+          {"tensor(float)"},
+          "Constrain the gradient input and output types to float tensors.")
+      .TypeAndShapeInferenceFunction([](InferenceContext& ctx) {
+        propagateShapeAndTypeFromFirstInput(ctx);
+      });
 }
 
 }  // namespace training
