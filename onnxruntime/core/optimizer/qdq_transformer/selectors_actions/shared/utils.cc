@@ -34,6 +34,7 @@ static const OpVersionsAndSelector::OpVersionsMap GetMiscOpVersionsMap() {
           {"Transpose", {}},
           {"MaxPool", {12}},
           {"Resize", {}},
+          {"Split", {}},
           {"Squeeze", {}},
           {"Unsqueeze", {}},
           {"Split", {}}};
@@ -56,9 +57,9 @@ static const OpVersionsAndSelector::OpVersionsMap GetUnaryOpVersionsMap() {
 static const OpVersionsAndSelector::OpVersionsMap GetBinaryOpVersionsMap() {
   return {{"Add", {}},
           {"Div", {}},
-          {"Sub", {}},
+          {"Mul", {}},
           {"Pow", {}},
-          {"Mul", {}}};
+          {"Sub", {}}};
 }
 static const OpVersionsAndSelector::OpVersionsMap GetVariadicOpVersionsMap() {
   return {{"Concat", {}}};
