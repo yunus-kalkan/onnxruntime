@@ -2197,7 +2197,7 @@ def build_protoc_for_host(cmake_path, source_dir, build_dir, args):
         cmd_args += ["-G", args.cmake_generator]
     if is_windows():
         if not is_ninja:
-            cmd_args += ["-T", "v142,version=14.28,host=x64"]
+            cmd_args += ["-T", "host=x64"]
     elif is_macOS():
         if args.use_xcode:
             cmd_args += ["-G", "Xcode"]
@@ -2445,10 +2445,6 @@ def main():
             update_submodules(source_dir)
         if is_windows():
             cpu_arch = platform.architecture()[0]
-            if args.msvc_toolset:
-                toolset = "v142,host=x64,version=" + args.msvc_toolset
-            else:
-                toolset = "host=x64"
             if args.build_wasm:
                 cmake_extra_args = ["-G", "Ninja"]
             elif args.cmake_generator == "Ninja":
@@ -2465,7 +2461,7 @@ def main():
                 if path_to_protoc_exe is None:
                     path_to_protoc_exe = build_protoc_for_host(cmake_path, source_dir, build_dir, args)
                 if args.arm:
-                    cmake_extra_args = ["-A", "ARM", "-T", toolset, "-G", args.cmake_generator]
+                    cmake_extra_args = ["-A", "ARM"]
                 elif args.arm64:
                     cmake_extra_args = ["-A", "ARM64"]
                 elif args.arm64ec:
@@ -2482,6 +2478,10 @@ def main():
             elif cpu_arch == "32bit" or args.x86:
                 cmake_extra_args = ["-A", "Win32", "-T", "host=x64", "-G", args.cmake_generator]
             else:
+                if args.msvc_toolset:
+                    toolset = "host=x64,version=" + args.msvc_toolset
+                else:
+                    toolset = "host=x64"
                 if args.cuda_version:
                     toolset += ",cuda=" + args.cuda_version
                 cmake_extra_args = ["-A", "x64", "-T", toolset, "-G", args.cmake_generator]
