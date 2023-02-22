@@ -2197,7 +2197,10 @@ def build_protoc_for_host(cmake_path, source_dir, build_dir, args):
         cmd_args += ["-G", args.cmake_generator]
     if is_windows():
         if not is_ninja:
-            cmd_args += ["-T", "v142,version=14.28,host=x64"]
+            if args.arm:
+                cmd_args += ["-T", "v142,version=14.29,host=x64"]
+            else:
+                cmd_args += ["-T", "host=x64"]
     elif is_macOS():
         if args.use_xcode:
             cmd_args += ["-G", "Xcode"]
@@ -2445,6 +2448,8 @@ def main():
             update_submodules(source_dir)
         if is_windows():
             cpu_arch = platform.architecture()[0]
+            if args.arm:
+                args.msvc_toolset = "14.29"
             if args.msvc_toolset:
                 toolset = "v142,host=x64,version=" + args.msvc_toolset
             else:
