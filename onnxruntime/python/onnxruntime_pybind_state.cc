@@ -844,7 +844,8 @@ void InitializeSession(InferenceSession* sess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
                        const std::vector<std::string>& provider_types,
                        const ProviderOptionsVector& provider_options,
-                       const std::unordered_set<std::string>& disabled_optimizer_names) {
+                       const std::unordered_set<std::string>& disabled_optimizer_names,
+                       const std::string& pre_grad_model) {
   ProviderOptionsMap provider_options_map;
   GenerateProviderOptionsMap(provider_types, provider_options, provider_options_map);
 
@@ -857,7 +858,7 @@ void InitializeSession(InferenceSession* sess,
 #else
   ORT_UNUSED_PARAMETER(disabled_optimizer_names);
 #endif
-
+  sess->SetPreGradModel(pre_grad_model);
   OrtPybindThrowIfError(sess->Initialize());
 }
 
@@ -1500,12 +1501,14 @@ including arg name, arg type (contains both type and shape).)pbdoc")
           [ep_registration_fn](PyInferenceSession* sess,
                                const std::vector<std::string>& provider_types = {},
                                const ProviderOptionsVector& provider_options = {},
-                               const std::unordered_set<std::string>& disabled_optimizer_names = {}) {
+                               const std::unordered_set<std::string>& disabled_optimizer_names = {},
+                               const std::string& pre_grad_model = "") {
             InitializeSession(sess->GetSessionHandle(),
                               ep_registration_fn,
                               provider_types,
                               provider_options,
-                              disabled_optimizer_names);
+                              disabled_optimizer_names,
+                              pre_grad_model);
           },
           R"pbdoc(Load a model saved in ONNX or ORT format.)pbdoc")
       .def("run",

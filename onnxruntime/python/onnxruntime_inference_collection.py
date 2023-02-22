@@ -5,6 +5,7 @@
 import collections
 import collections.abc
 import os
+import pdb
 import warnings
 
 from onnxruntime.capi import _pybind_state as C
@@ -355,6 +356,8 @@ class InferenceSession(Session):
 
         # internal parameters that we don't expect to be used in general so aren't documented
         disabled_optimizers = kwargs["disabled_optimizers"] if "disabled_optimizers" in kwargs else None
+        self._pre_grad_model = kwargs["pre_grad_model"] if "pre_grad_model" in kwargs else None
+        #pdb.set_trace()
 
         try:
             self._create_inference_session(providers, provider_options, disabled_optimizers)
@@ -405,7 +408,7 @@ class InferenceSession(Session):
             disabled_optimizers = set(disabled_optimizers)
 
         # initialize the C++ InferenceSession
-        sess.initialize_session(providers, provider_options, disabled_optimizers)
+        sess.initialize_session(providers, provider_options, disabled_optimizers, self._pre_grad_model)
 
         self._sess = sess
         self._sess_options = self._sess.session_options

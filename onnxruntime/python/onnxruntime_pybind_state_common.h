@@ -391,7 +391,8 @@ void InitializeSession(InferenceSession* sess,
                        ExecutionProviderRegistrationFn ep_registration_fn,
                        const std::vector<std::string>& provider_types = {},
                        const ProviderOptionsVector& provider_options = {},
-                       const std::unordered_set<std::string>& disabled_optimizer_names = {});
+                       const std::unordered_set<std::string>& disabled_optimizer_names = {},
+                       const std::string& pre_grad_model = "");
 
 // Checks if PyErrOccured, fetches status and throws.
 void ThrowIfPyErrOccured();

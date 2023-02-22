@@ -479,6 +479,8 @@ class InferenceSession {
    */
   Status AddPrePackedWeightsContainer(PrepackedWeightsContainer* prepacked_weights_container);
 
+  void SetPreGradModel(std::string pre_grad_model) {pre_grad_model_ = pre_grad_model;}
+
  protected:
 #if !defined(ORT_MINIMAL_BUILD)
 
@@ -845,6 +847,8 @@ class InferenceSession {
   };
 
   CachedExecutionProviderForGraphReplay cached_execution_provider_for_graph_replay_;
+
+  std::string pre_grad_model_;
 };
 
 struct SessionIOBinding {

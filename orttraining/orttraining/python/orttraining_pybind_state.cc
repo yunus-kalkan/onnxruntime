@@ -671,9 +671,9 @@ void addObjectMethodsForTraining(py::module& m, ExecutionProviderRegistrationFn 
                        const std::vector<OrtDevice>& fw_outputs_device_info,
                        const std::vector<std::string>& bw_fetches_names,
                        const std::vector<OrtDevice>& bw_outputs_device_info,
-                       int local_rank) {
+                       int local_rank, std::string f) {
         return std::make_unique<TrainingAgent>(*session->GetSessionHandle(), fw_feed_names, fw_outputs_device_info,
-                                               bw_fetches_names, bw_outputs_device_info, local_rank);
+                                               bw_fetches_names, bw_outputs_device_info, local_rank, f);
       }))
       .def("run_forward", [](TrainingAgent* agent, const std::vector<OrtValue>& feeds, std::vector<OrtValue>& fetches, PartialGraphExecutionState* state, OrtValueCachePtr cache) -> void {
         Status status = agent->RunForward(feeds, fetches, *state, cache);

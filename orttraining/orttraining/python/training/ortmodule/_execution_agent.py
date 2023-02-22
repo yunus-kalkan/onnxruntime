@@ -97,6 +97,7 @@ class TrainingAgent(object):
         providers=None,
         provider_options=None,
         local_rank=None,
+        f=None,
     ):
         """
         :param path_or_bytes: filename or serialized ONNX or ORT format model in a byte string
@@ -131,7 +132,7 @@ class TrainingAgent(object):
         """
 
         self._inference_session = onnxruntime.InferenceSession(
-            path_or_bytes, session_options, providers, provider_options
+            path_or_bytes, session_options, providers, provider_options, pre_grad_model=f
         )
 
         self._training_agent = C_TrainingAgent(
@@ -141,6 +142,7 @@ class TrainingAgent(object):
             bw_fetches_names,
             bw_outputs_device_info,
             local_rank,
+            f,
         )
 
     def run_forward(self, feeds, fetches, state, cache=None):

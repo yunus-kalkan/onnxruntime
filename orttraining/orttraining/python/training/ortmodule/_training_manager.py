@@ -358,6 +358,7 @@ class TrainingManager(GraphExecutionManager):
             providers,
             provider_options,
             local_device_rank,
+            self._graph_builder.get_forward_model(),
         )
 
     def _reinitialize_graph_builder(self, input_info):

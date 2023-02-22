@@ -1223,6 +1223,14 @@ static void ResolveMemoryPatternFlags(SessionState& session_state) {
 #pragma warning(disable : 26117)
 #endif
 common::Status InferenceSession::Initialize() {
+  if (pre_grad_model_ != "") {
+    std::stringstream ss;
+    ss << pre_grad_model_;
+    ModelProto model_proto;
+    Status st = Model::Load(ss, &model_proto);
+    std::shared_ptr<onnxruntime::Model> p_tmp_model;
+    ORT_THROW_IF_ERROR(Model::Load(model_proto, p_tmp_model, nullptr, *session_logger_));
+  }
   Status status = Status::OK();
   TimePoint tp;
   if (session_profiler_.IsEnabled()) {

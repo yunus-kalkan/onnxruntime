@@ -15,7 +15,7 @@ TrainingAgent::TrainingAgent(InferenceSession& session,
                              const std::vector<OrtDevice>& fw_outputs_device_info,
                              const std::vector<std::string>& bw_fetches_names,
                              const std::vector<OrtDevice>& bw_outputs_device_info,
-                             int local_rank) : inference_session_(session) {
+                             int local_rank, std::string f) : inference_session_(session) {
   ORT_UNUSED_PARAMETER(local_rank);
 #if !defined(ORT_MINIMAL_BUILD) && defined(ORT_MEMORY_PROFILE)
   inference_session_.GetMemoryProfiler().GetMemoryInfo().SetLocalRank(local_rank);
@@ -50,6 +50,12 @@ TrainingAgent::TrainingAgent(InferenceSession& session,
 
   CreateAndInitializeFeedsFetchesManager(session_state, bw_feed_names, bw_fetches_names, bw_outputs_device_info,
                                          bw_feeds_fetches_manager_);
+  if (f == "") break_point++;
+  onnx::ModelProto model_proto;
+  model_proto.ParseFromString(f);
+  //std::shared_ptr<onnxruntime::Model> model;
+
+  //model_proto.
 }
 
 TrainingAgent::~TrainingAgent() = default;
