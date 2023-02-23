@@ -255,7 +255,7 @@ namespace Microsoft.ML.OnnxRuntime.Tests
             using (var opt = new OrtThreadingOptions()) {
                 // Make sure we start anew
                 OrtEnv.Instance().Dispose();
-                var env = OrtEnv.Instance(opt);
+                var env = OrtEnv.InstanceWithThreadingOptions(opt);
                 Assert.NotNull(env);
             }
         }
@@ -267,9 +267,9 @@ namespace Microsoft.ML.OnnxRuntime.Tests
             {
                 // Make sure we start anew
                 OrtEnv.Instance().Dispose();
-                var env = OrtEnv.Instance(opt);
+                var env = OrtEnv.InstanceWithThreadingOptions(opt);
                 Assert.NotNull(env);
-                Assert.Throws<OnnxRuntimeException>(() => OrtEnv.Instance(opt));
+                Assert.Throws<OnnxRuntimeException>(() => OrtEnv.InstanceWithThreadingOptions(opt));
                 var envDefault = OrtEnv.Instance();
                 Assert.True(env == envDefault);
             }

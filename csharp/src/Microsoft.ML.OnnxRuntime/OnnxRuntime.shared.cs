@@ -78,13 +78,13 @@ namespace Microsoft.ML.OnnxRuntime
         private OrtEnv()
         {
             NativeApiStatus.VerifySuccess(NativeMethods.OrtCreateEnv(envLogLevel, @"CSharpOnnxRuntime", out handle));
-            SetLangugageProjection();
+            SetLanguageProjection();
         }
 
         private OrtEnv(OrtThreadingOptions opt)
         {
             NativeApiStatus.VerifySuccess(NativeMethods.OrtCreateEnvWithGlobalThreadPools(envLogLevel, @"CSharpOnnxRuntime", opt.Handle, out handle));
-            SetLangugageProjection();
+            SetLanguageProjection();
         }
 
 #endregion
@@ -139,7 +139,7 @@ namespace Microsoft.ML.OnnxRuntime
         /// <param name="opt">threading options instance</param>
         /// <returns></returns>
         /// <exception cref="OnnxRuntimeException">when the singleton was already initialized</exception>
-        public static OrtEnv Instance(OrtThreadingOptions opt)
+        public static OrtEnv InstanceWithThreadingOptions(OrtThreadingOptions opt)
         {
             if(_instance != null)
             {
@@ -154,6 +154,11 @@ namespace Microsoft.ML.OnnxRuntime
                     var inst = new OrtEnv(opt);
                     Interlocked.MemoryBarrier();
                     _instance = inst;
+                } 
+                else
+                {
+                    throw new OnnxRuntimeException(ErrorCode.Fail,
+                        "Singleton object already instantiated. Threading options would not take effect");
                 }
             }
             return _instance;
