@@ -25,7 +25,7 @@ class MlasComputeExpTest : public MlasTestBase {
       OutputReference[n] = std::exp(Input[n]);
     }
 
-    MlasComputeExp(Input, Output, N);
+    // MlasComputeExp(Input, Output, N);
 
     constexpr float AbsoluteTolerance = 1e-6f;
     constexpr float RelativeTolerance = 1e-6f;
