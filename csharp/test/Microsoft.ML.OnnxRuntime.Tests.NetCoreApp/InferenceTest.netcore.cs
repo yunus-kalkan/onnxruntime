@@ -353,7 +353,7 @@ namespace Microsoft.ML.OnnxRuntime.Tests
                 { "test_softplus_example_expanded", "Not applicable"},
                 { "test_softplus_expanded", "Not applicable"},
                 { "test_col2im_pads", "due to a typo in test data"},
-                { "test_optional_has_element_empty_optional_input", "C# API doesn't support optional input"},
+                //{ "test_optional_has_element_empty_optional_input", "C# API doesn't support optional input"},
                 { "test_optional_get_element_optional_tensor", "C# API doesn't support optional input"},
                 { "test_optional_get_element_optional_sequence", "C# API doesn't support optional input"},
                 { "test_optional_has_element_tensor_input", "C# API doesn't support optional input"},
