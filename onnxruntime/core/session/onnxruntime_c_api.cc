@@ -2699,6 +2699,8 @@ static constexpr OrtApi ort_api_1_to_15 = {
     &OrtApis::UpdateDnnlProviderOptions,
     &OrtApis::GetDnnlProviderOptionsAsString,
     &OrtApis::ReleaseDnnlProviderOptions,
+    &OrtApis::CastTypeInfoToOptionalTypeInfo,
+    &OrtApis::GetOptionalTypeToContainedTypeInfo
 };
 
 // Asserts to do a some checks to ensure older Versions of the OrtApi never change (will detect an addition or deletion but not if they cancel out each other)

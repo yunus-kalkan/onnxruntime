@@ -30,15 +30,11 @@ OrtOptionalTypeInfo::Ptr OrtOptionalTypeInfo::Clone() const {
   return std::make_unique<OrtOptionalTypeInfo>(std::move(contained_type_copy));
 }
 
-// ORT_API_STATUS_IMPL(OrtApis::GetOptionalContainedTypeInfo, _In_ const OrtOptionalTypeInfo* optional_type_info,
-//                     _Outptr_ OrtTypeInfo** out) {
-//   API_IMPL_BEGIN
-//   auto contained_type_copy = optional_type_info->contained_type_->Clone();
-//   *out = contained_type_copy.release();
-//   return nullptr;
-//   API_IMPL_END
-// }
-//
-// ORT_API(void, OrtApis::ReleaseOptionalTypeInfo, _Frees_ptr_opt_ OrtOptionalTypeInfo* ptr) {
-//   OrtOptionalTypeInfo::Ptr p(ptr);
-// }
+ ORT_API_STATUS_IMPL(OrtApis::GetOptionalTypeToContainedTypeInfo, _In_ const OrtOptionalTypeInfo* optional_type_info,
+                     _Outptr_ OrtTypeInfo** out) {
+   API_IMPL_BEGIN
+   auto type_info = optional_type_info->contained_type_->Clone();
+   *out = type_info.release();
+   return nullptr;
+   API_IMPL_END
+ }

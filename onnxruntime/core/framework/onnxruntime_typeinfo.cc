@@ -37,43 +37,67 @@ OrtTypeInfo::OrtTypeInfo(ONNXType type1) noexcept : type(type1) {
 }
 
 OrtTypeInfo::OrtTypeInfo(std::unique_ptr<OrtMapTypeInfo> map_type_info1) noexcept
-    : type(ONNX_TYPE_MAP), map_type_info(std::move(map_type_info1)) {}
+  : type(ONNX_TYPE_MAP), map_type_info(std::move(map_type_info1)) {}
 
 OrtTypeInfo::OrtTypeInfo(std::unique_ptr<OrtSequenceTypeInfo> sequence_type_info1) noexcept
-    : type(ONNX_TYPE_SEQUENCE), sequence_type_info(std::move(sequence_type_info1)) {}
+  : type(ONNX_TYPE_SEQUENCE), sequence_type_info(std::move(sequence_type_info1)) {}
 
 OrtTypeInfo::OrtTypeInfo(std::unique_ptr<OrtOptionalTypeInfo> optional_type_info1) noexcept
-    : type(ONNX_TYPE_OPTIONAL), optional_type_info(std::move(optional_type_info1)) {}
+  : type(ONNX_TYPE_OPTIONAL), optional_type_info(std::move(optional_type_info1)) {}
 
 OrtTypeInfo::OrtTypeInfo(ONNXType type1, std::unique_ptr<OrtTensorTypeAndShapeInfo> data1) noexcept
-    : type(type1), data(std::move(data1)) {
+  : type(type1), data(std::move(data1)) {
 }
 
 OrtTypeInfo::~OrtTypeInfo() = default;
 
 ORT_API_STATUS_IMPL(OrtApis::GetOnnxTypeFromTypeInfo, _In_ const struct OrtTypeInfo* input, _Out_ ONNXType* out) {
-  *out = input->type;
+  API_IMPL_BEGIN
+    * out = input->type;
   return nullptr;
+  API_IMPL_END
 }
 
 ORT_API_STATUS_IMPL(OrtApis::CastTypeInfoToTensorInfo, _In_ const struct OrtTypeInfo* input,
-                    _Outptr_result_maybenull_ const struct OrtTensorTypeAndShapeInfo** out) {
-  *out = (input->type == ONNX_TYPE_TENSOR || input->type == ONNX_TYPE_SPARSETENSOR) ? input->data.get() : nullptr;
+  _Outptr_result_maybenull_ const struct OrtTensorTypeAndShapeInfo** out) {
+  API_IMPL_BEGIN
+  if (input->type != ONNX_TYPE_TENSOR && input->type != ONNX_TYPE_SPARSETENSOR) {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Input is not a tensor or sparse tensor type");
+  }
+  *out = input->data.get();
   return nullptr;
+  API_IMPL_END
 }
 
 ORT_API_STATUS_IMPL(OrtApis::CastTypeInfoToMapTypeInfo, _In_ const OrtTypeInfo* type_info,
-                    _Outptr_result_maybenull_ const OrtMapTypeInfo** out) {
+  _Outptr_result_maybenull_ const OrtMapTypeInfo** out) {
   API_IMPL_BEGIN
-  *out = type_info->type == ONNX_TYPE_MAP ? type_info->map_type_info.get() : nullptr;
+  if (type_info->type != ONNX_TYPE_MAP) {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Input is not a map type");
+  }
+  *out = type_info->map_type_info.get();
   return nullptr;
   API_IMPL_END
 }
 
 ORT_API_STATUS_IMPL(OrtApis::CastTypeInfoToSequenceTypeInfo, _In_ const OrtTypeInfo* type_info,
-                    _Outptr_result_maybenull_ const OrtSequenceTypeInfo** out) {
+  _Outptr_result_maybenull_ const OrtSequenceTypeInfo** out) {
   API_IMPL_BEGIN
-  *out = type_info->type == ONNX_TYPE_SEQUENCE ? type_info->sequence_type_info.get() : nullptr;
+  if (type_info->type != ONNX_TYPE_SEQUENCE) {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Input is not a sequence type");
+  }
+  *out = type_info->sequence_type_info.get();
+  return nullptr;
+  API_IMPL_END
+}
+
+ORT_API_STATUS_IMPL(OrtApis::CastTypeInfoToOptionalTypeInfo, _In_ const OrtTypeInfo* type_info,
+  _Outptr_result_maybenull_ const OrtOptionalTypeInfo** out) {
+  API_IMPL_BEGIN
+  if(type_info->type != ONNX_TYPE_OPTIONAL) {
+    return OrtApis::CreateStatus(ORT_INVALID_ARGUMENT, "Input is not an optional type");
+  }
+  *out = type_info->optional_type_info.get();
   return nullptr;
   API_IMPL_END
 }
