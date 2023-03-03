@@ -445,7 +445,7 @@ ORT_API(void, ReleaseDnnlProviderOptions, _Frees_ptr_opt_ OrtDnnlProviderOptions
 ORT_API_STATUS_IMPL(CastTypeInfoToOptionalTypeInfo, _In_ const OrtTypeInfo* type_info,
                     _Outptr_result_maybenull_ const OrtOptionalTypeInfo** out);
 
-ORT_API_STATUS_IMPL(GetOptionalTypeToContainedTypeInfo, _In_ const OrtOptionalTypeInfo* optional_type_info,
+ORT_API_STATUS_IMPL(GetOptionalContainedTypeInfo, _In_ const OrtOptionalTypeInfo* optional_type_info,
                     _Outptr_ OrtTypeInfo** out);
 
 }  // namespace OrtApis

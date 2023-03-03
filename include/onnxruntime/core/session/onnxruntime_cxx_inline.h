@@ -1104,7 +1104,7 @@ inline TypeInfo SequenceTypeInfoImpl<T>::GetSequenceElementType() const {
 template <typename T>
 inline TypeInfo OptionalTypeInfoImpl<T>::GetOptionalElementType() const {
   OrtTypeInfo* info;
-  ThrowOnError(GetApi().GetOptionalTypeToContainedTypeInfo(this->p_, &info));
+  ThrowOnError(GetApi().GetOptionalContainedTypeInfo(this->p_, &info));
   return TypeInfo{info};
 }
 

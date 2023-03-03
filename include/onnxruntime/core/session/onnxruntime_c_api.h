@@ -3994,7 +3994,7 @@ struct OrtApi {
    *
    * \since Version 1.15.
    */
-  ORT_API2_STATUS(GetOptionalTypeToContainedTypeInfo, _In_ const OrtOptionalTypeInfo* optional_type_info,
+  ORT_API2_STATUS(GetOptionalContainedTypeInfo, _In_ const OrtOptionalTypeInfo* optional_type_info,
                   _Outptr_ OrtTypeInfo** out);
 
 #ifdef __cplusplus
