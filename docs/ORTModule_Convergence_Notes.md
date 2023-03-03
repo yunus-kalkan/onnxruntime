@@ -48,9 +48,9 @@ Run command to generate per step summary at dir orttraining/tools/scripts/
 Be noted: here we use the topo order of PyTorch to merge activation summary, to make it easier to compare the result.
 
 ```bash
-python merge_summary.py --path pt_no_randomness_fulllayer --order pt_no_randomness_fulllayer/step_0/order.txt
+python orttraining/tools/scripts/merge_summary.py --path pt_no_randomness_fulllayer --order pt_no_randomness_fulllayer/step_0/order.txt
 
-python merge_summary.py --path ort_no_randomness_fulllayer --order pt_no_randomness_fulllayer/step_0/order.txt
+python orttraining/tools/scripts/merge_summary.py --path ort_no_randomness_fulllayer --order pt_no_randomness_fulllayer/step_0/order.txt
 ```
 
 Manual diff the generate per-step summary to find the where is the first big diff happens.
