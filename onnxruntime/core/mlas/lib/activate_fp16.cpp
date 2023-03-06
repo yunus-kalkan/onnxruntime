@@ -82,6 +82,7 @@ struct MLAS_HALF_ACTIVATION_FUNCTION<MlasLeakyReluActivation>
 //
 template <>
 struct MLAS_HALF_ACTIVATION_FUNCTION<MlasLogisticActivation> {
+#if defined(MLAS_TARGET_ARM64) || defined(MLAS_TARGET_ARM64EC)
     //
     // Constants for float16x8_t
     //
@@ -132,8 +133,6 @@ struct MLAS_HALF_ACTIVATION_FUNCTION<MlasLogisticActivation> {
     // This number is also the largest z for which exph(-z) is normalized.
     const float16x4_t vdenorm_cutoff_16x4 =
         vreinterpret_f16_u16(vmov_n_u16(UINT16_C(0xC8DA)));  // -0x1.368p+3h
-
-#undef MLAS_LOGISTIC_ACTIVATION_CONSTANTS
 
     MLAS_HALF_ACTIVATION_FUNCTION(const MLAS_ACTIVATION& Activation)
     {
@@ -273,8 +272,25 @@ struct MLAS_HALF_ACTIVATION_FUNCTION<MlasLogisticActivation> {
 
         return vf;
     }
+#else
+    MLAS_HALF_ACTIVATION_FUNCTION(const MLAS_ACTIVATION& Activation)
+    {
+        MLAS_UNREFERENCED_PARAMETER(Activation);
+        MLAS_THROW_EX(std::runtime_error("unsupported target architecture"));
+    }
 
-#undef MLAS_LOGISTIC_ACTIVATION_IMPL
+    MLAS_FLOAT16X8 Activate(MLAS_FLOAT16X8 vx)
+    {
+        MLAS_UNREFERENCED_PARAMETER(Activation);
+        MLAS_THROW_EX(std::runtime_error("unsupported target architecture"));
+    }
+
+    MLAS_FLOAT16X4 Activate(MLAS_FLOAT16X4 vx)
+    {
+        MLAS_UNREFERENCED_PARAMETER(Activation);
+        MLAS_THROW_EX(std::runtime_error("unsupported target architecture"));
+    }
+#endif
 };
 
 template <>

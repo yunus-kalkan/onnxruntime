@@ -94,6 +94,15 @@ Abstract:
 #define MLAS_UNREFERENCED_PARAMETER(parameter) ((void)(parameter))
 
 //
+// Macro to abort in no exception case, otherwise throw the exception
+//
+#ifdef MLAS_NO_EXCEPTION
+#define MLAS_THROW_EX(ex) abort()
+#else
+#define MLAS_THROW_EX(ex) throw ex
+#endif
+
+//
 // Select the threading model.
 //
 // N.B. BUILD_MLAS_NO_ONNXRUNTIME is used to build MLAS test code outside
