@@ -4251,20 +4251,78 @@ Return true if all elements are true and false otherwise.
           "LSTMGrad op that computes the partial derivative of the loss with respect to LSTM inputs: "
           "a) The input sequence, b) Weight parameters, c) Recurrence weight parameters, d) Bias parameters, "
           "e) Peephole weight parameters, f) Previous cell state, g) Previous hidden state.")
-      .Input(0, "dY", "Gradient of loss with respect to the output Y of the LSTM cell", "T")
-      .Input(1, "dY_h", "Gradient of loss with respect to the output Y_h of the LSTM cell", "T")
-      .Input(2, "dY_c", "Gradient of loss with respect to the output Y_c of the LSTM cell", "T")
-      .Output(0, "dX", "Gradient of loss with respect to the input sequence (to the LSTM cell).", "T")
-      .Output(0, "dW", "Gradient of loss with respect to the weight parameters (of the LSTM cell).", "T")
-      .Output(0, "dR", "Gradient of loss with respect to the recurrence weight parameters (of the LSTM cell).", "T")
-      .Output(0, "dB", "Gradient of loss with respect to the bias parameters (of the LSTM cell).", "T")
-      .Output(0, "dP", "Gradient of loss with respect to the peephole parameters (of the LSTM cell).", "T")
-      .Output(0, "dC_tminus1", "Gradient of loss with respect to the previous cell state (of the LSTM cell).", "T")
-      .Output(0, "dH_tminus1", "Gradient of loss with respect to the previous hidden state (of the LSTM cell).", "T")
+      .Attr(
+          "activations",
+          "A list of 3 (or 6 if bidirectional) activation functions "
+          "for input, output, forget, cell, and hidden. The activation functions must "
+          "be one of the activation functions specified above. Optional: See the equations "
+          "for default if not specified.",
+          AttributeProto::STRINGS,
+          OPTIONAL_VALUE)
+      .Attr(
+          "activation_alpha",
+          "Optional scaling values used by some activation functions. The values are consumed "
+          "in the order of activation functions, for example (f, g, h) in LSTM. Default values "
+          "are the same as of corresponding ONNX operators.For example with LeakyRelu, the "
+          "default alpha is 0.01.",
+          AttributeProto::FLOATS,
+          OPTIONAL_VALUE)
+      .Attr(
+          "activation_beta",
+          "Optional scaling values used by some activation functions. The values are consumed in "
+          "the order of activation functions, for example (f, g, h) in LSTM. Default values are "
+          "the same as of corresponding ONNX operators.",
+          AttributeProto::FLOATS,
+          OPTIONAL_VALUE)
+      .Attr(
+          "clip",
+          "Cell clip threshold. Clipping bounds the elements of a tensor in the range of "
+          "[-threshold, +threshold] and is applied to the input of activations. No clip if not "
+          "specified.",
+          AttributeProto::FLOAT,
+          OPTIONAL_VALUE)
+      .Attr(
+          "input_forget",
+          "Couple the input and forget gates if 1, default 0.",
+          AttributeProto::INT,
+          static_cast<int64_t>(0))
+      .Attr(
+          "hidden_size",
+          "Number of neurons in the hidden layer.",
+          AttributeProto::INT,
+          OPTIONAL_VALUE)
+      .Attr(
+          "direction",
+          "Specify if the RNN is forward, reverse, or bidirectional. Must be one of "
+          "forward (default), reverse, or bidirectional.",
+          AttributeProto::STRING,
+          std::string("forward"))
+      .Input(0, "Xt", "Original input to the LSTM cell.", "T")
+      .Input(1, "W", "Input weight parameters to the LSTM cell.", "T")
+      .Input(2, "R", "Input recurrent weight parameters to the LSTM cell.", "T")
+      .Input(3, "B", "Input bias parameters to the LSTM cell.", "T", OpSchema::Optional)
+      .Input(4, "sequence_length", "Input sequence length of the input sequence.", "TSize", OpSchema::Optional)
+      .Input(5, "Ctminus1", "Initial cell state input to the LSTM cell", "T", OpSchema::Optional)
+      .Input(6, "Htminus1", "Initial hidden state input to the LSTM cell", "T", OpSchema::Optional)
+      .Input(7, "P", "Input peephole weight parameters to the LSTM cell.", "T", OpSchema::Optional)
+      .Input(8, "d_all_hidden_states", "Gradient of loss with respect to the output Y of the LSTM cell", "T", OpSchema::Optional)
+      .Input(9, "d_final_hidden_state", "Gradient of loss with respect to the output Y_h of the LSTM cell", "T", OpSchema::Optional)
+      .Input(10, "d_final_cell_state", "Gradient of loss with respect to the output Y_c of the LSTM cell", "T", OpSchema::Optional)
+      .Output(0, "dXt", "Gradient of loss with respect to the input (to the LSTM cell).", "T", OpSchema::Optional)
+      .Output(1, "dW", "Gradient of loss with respect to the weight parameters (of the LSTM cell).", "T", OpSchema::Optional)
+      .Output(2, "dR", "Gradient of loss with respect to the recurrence weight parameters (of the LSTM cell).", "T", OpSchema::Optional)
+      .Output(3, "dB", "Gradient of loss with respect to the bias parameters (of the LSTM cell).", "T", OpSchema::Optional)
+      .Output(4, "dP", "Gradient of loss with respect to the peephole parameters (of the LSTM cell).", "T", OpSchema::Optional)
+      .Output(5, "dCtminus1", "Gradient of loss with respect to the previous cell state (of the LSTM cell).", "T", OpSchema::Optional)
+      .Output(6, "dHtminus1", "Gradient of loss with respect to the previous hidden state (of the LSTM cell).", "T", OpSchema::Optional)
       .TypeConstraint(
           "T",
           {"tensor(float)"},
           "Constrain the gradient input and output types to float tensors.")
+      .TypeConstraint(
+          "TSize",
+          {"tensor(int32)"},
+          "Constrain the length types to int32 tensors.")
       .TypeAndShapeInferenceFunction([](InferenceContext& ctx) {
         propagateShapeAndTypeFromFirstInput(ctx);
       });

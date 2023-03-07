@@ -37,7 +37,10 @@ class UniDirectionalLstmTraining {
                gsl::span<T>& outputs, gsl::span<T>& all_cell_states, gsl::span<T>& final_hidden_state,
                gsl::span<T>& final_cell_state);
 
-  void ComputeGradient();
+  void ComputeGradient(gsl::span<T>& grad_all_hidden_states, gsl::span<T>& grad_final_hidden_state,
+                       gsl::span<T>& grad_final_cell_state, gsl::span<T>& initial_c,
+                       gsl::span<T>& initial_h,
+                       gsl::span<T>& all_hidden_states, gsl::span<T>& all_cell_states);
 
   ~UniDirectionalLstmTraining() = default;
 
@@ -50,7 +53,8 @@ class UniDirectionalLstmTraining {
                         const span_T_iter& C_prev_end,  // Ct-1 value not 'ct'. using 'C' for clarity
                         span_T_iter& C_prev_clipped, const span_T_iter& C_prev_clipped_end, span_T_iter& batched_output,
                         span_T_iter& batched_output_end, const gsl::span<const int>& seq_lengths,
-                        int min_sequence_length, int step, int row, int local_fused_hidden_rows, bool output_sequence);
+                        int min_sequence_length, int step, int row, int local_fused_hidden_rows, bool output_sequence,
+                        span_T_iter& batched_cell_state, span_T_iter& batched_cell_state_end);
 
   void AllocateBuffers();
 

@@ -1895,5 +1895,27 @@ IMPLEMENT_GRADIENT_BUILDER(GetFakeQuantGradient) {
   return {NodeDef(OpDef{"FakeQuantGrad", kMSDomain, 1}, {GO(0), O(1)}, {GI(0)})};
 }
 
+IMPLEMENT_GRADIENT_BUILDER(GetLSTMGradient) {
+  std::vector<ArgDef> input_args({I(0), I(1), I(2)});
+  for (int i = 3; i < GetSrcNodeInputSize(); i++) {
+    input_args.push_back(I(i));
+  }
+
+  for (int o = 0; o < GetSrcNodeOutputSize(); ++o) {
+    input_args.push_back(GO(o));
+  }
+
+  std::vector<ArgDef> output_args;
+  constexpr size_t sequence_length_input_index = 4;
+  for (int i = 0; i < GetSrcNodeInputSize(); ++i) {
+    if (sequence_length_input_index == i) continue;
+    if (IsGradientRequiredForSrcNodeInput(i)) {
+      output_args.push_back(GI(i));
+    }
+  }
+
+  return {NodeDef(OpDef{"LSTMGrad", kMSDomain, 1}, input_args, output_args, SrcNodeAttributes())};
+}
+
 }  // namespace training
 }  // namespace onnxruntime
