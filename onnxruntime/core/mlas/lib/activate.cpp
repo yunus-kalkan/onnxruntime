@@ -509,7 +509,8 @@ Return Value:
         }
 
         case MlasActivationKindCount: {
-            ORT_THROW_EX(std::runtime_error, "ad bmlas activation kind");
+            ORT_THROW_EX(std::runtime_error, "bad mlas activation kind");
+            break;
         }
     }
 }

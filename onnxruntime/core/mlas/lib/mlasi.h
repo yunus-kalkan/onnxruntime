@@ -93,6 +93,8 @@ Abstract:
 
 #define MLAS_UNREFERENCED_PARAMETER(parameter) ((void)(parameter))
 
+#include "core/common/common.h"
+
 //
 // Select the threading model.
 //
