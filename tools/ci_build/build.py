@@ -971,7 +971,7 @@ def generate_build_tree(
     ]
 
     # By default on Windows we currently support only cross compiling for ARM/ARM64
-    # (no native compilation supported through this script).        
+    # (no native compilation supported through this script).
     if args.arm64 or args.arm64ec or args.arm:
         add_default_definition(cmake_extra_defines, "onnxruntime_CROSS_COMPILING", "ON")
         if args.use_extensions:
