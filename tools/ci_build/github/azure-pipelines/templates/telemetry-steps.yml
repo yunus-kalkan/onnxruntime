@@ -3,7 +3,8 @@
 
 steps:
   - powershell: |
-      if ($env:TELEMETRYGUID) {
+      $telemetry_guid = [Environment]::GetEnvironmentVariable('TELEMETRYGUID')
+      if ( -not [string]::IsNullOrEmpty( $telemetry_guid ) ){
         $length = $env:TELEMETRYGUID.length
         $fileContent = "#define TraceLoggingOptionMicrosoftTelemetry() \
           TraceLoggingOptionGroup("+$env:TELEMETRYGUID.substring(1, $length-2)+")"

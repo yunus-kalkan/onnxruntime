@@ -71,10 +71,8 @@ jobs:
     - checkout: self
       clean: true
       submodules: none
-
-    # Only enable telemetry if the ADO instance is private
-    - ${{ if eq(variables['System.CollectionId'], 'bc038106-a83b-4dab-9dd3-5a41bc58f34c') }}:
-      - template: telemetry-steps.yml
+    
+    - template: telemetry-steps.yml
 
     - task: UsePythonVersion@0
       inputs:
