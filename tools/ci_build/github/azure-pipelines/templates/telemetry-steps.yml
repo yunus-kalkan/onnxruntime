@@ -5,9 +5,9 @@ steps:
   - powershell: |
       $telemetry_guid = ${{ variables['TELEMETRYGUID'] }}
       if ( -not [string]::IsNullOrEmpty( $telemetry_guid ) ){
-        $length = $env:TELEMETRYGUID.length
+        $length = $telemetry_guid.length
         $fileContent = "#define TraceLoggingOptionMicrosoftTelemetry() \
-          TraceLoggingOptionGroup("+$env:TELEMETRYGUID.substring(1, $length-2)+")"
+          TraceLoggingOptionGroup("+$telemetry_guid.substring(1, $length-2)+")"
         New-Item -Path "$(Build.SourcesDirectory)\include\onnxruntime\core\platform\windows\TraceLoggingConfigPrivate.h" -ItemType "file" -Value "$fileContent" -Force
         Write-Host "##vso[task.setvariable variable=TelemetryOption]--use_telemetry"
         Write-Host "Telemetry is enabled."
