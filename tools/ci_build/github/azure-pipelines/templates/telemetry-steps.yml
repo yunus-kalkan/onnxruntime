@@ -3,7 +3,7 @@
 
 steps:
   - powershell: |
-      $telemetry_guid = ${{ variables['TELEMETRYGUID'] }}
+      [string]$telemetry_guid = ${{ variables['TELEMETRYGUID'] }}
       if ( -not [string]::IsNullOrEmpty( $telemetry_guid ) ){
         $length = $telemetry_guid.length
         $fileContent = "#define TraceLoggingOptionMicrosoftTelemetry() \
