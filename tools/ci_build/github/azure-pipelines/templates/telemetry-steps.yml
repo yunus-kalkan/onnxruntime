@@ -3,7 +3,7 @@
 
 steps:
   - powershell: |
-      $telemetry_guid = [Environment]::GetEnvironmentVariable('TELEMETRYGUID')
+      $telemetry_guid = ${{ variables['TELEMETRYGUID'] }}
       if ( -not [string]::IsNullOrEmpty( $telemetry_guid ) ){
         $length = $env:TELEMETRYGUID.length
         $fileContent = "#define TraceLoggingOptionMicrosoftTelemetry() \
@@ -15,6 +15,4 @@ steps:
         Write-Host "##vso[task.setvariable variable=TelemetryOption]"
         Write-Host "Telemetry is disabled."
       }
-    displayName: 'Set TelemetryOption variable and optionally create TraceLoggingConfigPrivate.h for WinML Telemetry'
-    env:
-      TELEMETRYGUID: $(TELEMETRYGUID)
+    displayName: 'Set TelemetryOption variable and optionally create TraceLoggingConfigPrivate.h for WinML Telemetry'   
