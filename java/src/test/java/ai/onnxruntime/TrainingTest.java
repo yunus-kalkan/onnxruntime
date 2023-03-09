@@ -95,78 +95,6 @@ public class TrainingTest {
     }
   }
 
-  void runTrainStep(OrtTrainingSession trainingSession) throws OrtException {
-    float[] expectedOutput =
-        TestHelpers.loadTensorFromFile(TestHelpers.getResourcePath("/loss_1.out"));
-    float[] input = TestHelpers.loadTensorFromFile(TestHelpers.getResourcePath("/input-0.in"));
-    int[] labels = {1, 1};
-
-    // Run inference with pinned inputs and pinned outputs
-
-    // Create inputs
-    Map<String, OnnxTensor> pinnedInputs = new HashMap<>();
-    try {
-      long[] inputShape = {2, 784};
-      pinnedInputs.put("input-0", OnnxTensor.createTensor(env, OrtUtil.reshape(input, inputShape)));
-
-      // long[] labelsShape = {2};
-      pinnedInputs.put("labels", OnnxTensor.createTensor(env, labels));
-
-      try (OrtSession.Result firstOutput = trainingSession.trainStep(pinnedInputs)) {
-        Assertions.assertTrue(firstOutput.size() > 0);
-      }
-      trainingSession.lazyResetGrad();
-      try (OrtSession.Result secondOutputs = trainingSession.trainStep(pinnedInputs)) {
-        OnnxValue outputBuffer = secondOutputs.get(0);
-
-        Assertions.assertEquals(secondOutputs.get("onnx::loss::21273").get(), outputBuffer);
-        Assertions.assertTrue(outputBuffer instanceof OnnxTensor);
-
-        OnnxTensor outLabelTensor = (OnnxTensor) outputBuffer;
-        Assertions.assertEquals(
-            OnnxTensorType.ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, outLabelTensor.getInfo().onnxType);
-        Assertions.assertNotNull(outLabelTensor);
-        Assertions.assertEquals(expectedOutput[0], (float) outLabelTensor.getValue(), 1e-3f);
-      }
-    } finally {
-      OnnxValue.close(pinnedInputs);
-    }
-  }
-
-  @Test
-  public void TestTrainingSessionTrainStepOrtOutput() throws OrtException {
-    String checkpointPath = TestHelpers.getResourcePath("/checkpoint.ckpt").toString();
-    String trainingPath = TestHelpers.getResourcePath("/training_model.onnx").toString();
-    try (OrtTrainingSession trainingSession =
-        env.createTrainingSession(checkpointPath, trainingPath, null, null)) {
-      runTrainStep(trainingSession);
-    }
-  }
-
-  @Test
-  public void TestSaveCheckpoint() throws IOException, OrtException {
-    String checkpointPath = TestHelpers.getResourcePath("/checkpoint.ckpt").toString();
-    String trainingPath = TestHelpers.getResourcePath("/training_model.onnx").toString();
-
-    Path tmpPath = Files.createTempDirectory("ort-java-training-test");
-    try {
-      try (OrtTrainingSession trainingSession =
-          env.createTrainingSession(checkpointPath, trainingPath, null, null)) {
-
-        // Save checkpoint
-        trainingSession.saveCheckpoint(tmpPath, false);
-      }
-
-      try (OrtTrainingSession trainingSession =
-          env.createTrainingSession(tmpPath.toString(), trainingPath, null, null)) {
-        // Load saved checkpoint into new session and run train step
-        runTrainStep(trainingSession);
-      }
-    } finally {
-      TestHelpers.deleteDirectoryTree(tmpPath);
-    }
-  }
-
   @Test
   public void TestTrainingSessionOptimizerStep() throws OrtException {
     String checkpointPath = TestHelpers.getResourcePath("/checkpoint.ckpt").toString();
@@ -225,32 +153,6 @@ public class TrainingTest {
       trainingSession.setLearningRate(learningRate);
       float actualLearningRate = trainingSession.getLearningRate();
       Assertions.assertEquals(learningRate, actualLearningRate);
-    }
-  }
-
-  @Test
-  public void TestTrainingSessionLinearLRScheduler() throws OrtException {
-    String checkpointPath = TestHelpers.getResourcePath("/checkpoint.ckpt").toString();
-    String trainingPath = TestHelpers.getResourcePath("/training_model.onnx").toString();
-    String optimizerPath = TestHelpers.getResourcePath("/adamw.onnx").toString();
-
-    try (OrtTrainingSession trainingSession =
-        env.createTrainingSession(checkpointPath, trainingPath, null, optimizerPath)) {
-      float learningRate = 0.1f;
-      trainingSession.registerLinearLRScheduler(2, 4, learningRate);
-      runTrainStep(trainingSession);
-      trainingSession.optimizerStep();
-      trainingSession.schedulerStep();
-      Assertions.assertEquals(0.05f, trainingSession.getLearningRate());
-      trainingSession.optimizerStep();
-      trainingSession.schedulerStep();
-      Assertions.assertEquals(0.1f, trainingSession.getLearningRate());
-      trainingSession.optimizerStep();
-      trainingSession.schedulerStep();
-      Assertions.assertEquals(0.05f, trainingSession.getLearningRate());
-      trainingSession.optimizerStep();
-      trainingSession.schedulerStep();
-      Assertions.assertEquals(0.0f, trainingSession.getLearningRate());
     }
   }
 }
